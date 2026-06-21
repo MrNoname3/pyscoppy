@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.csv
+/tmp/
+
+# local artifacts, not version-controlled
+firmware/*
+!firmware/.gitkeep
+reference/
+.venv/

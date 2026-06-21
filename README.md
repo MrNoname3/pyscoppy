@@ -1,0 +1,104 @@
+# pyscoppy — a shared oscilloscope for a Scoppy / FScope Pico
+
+Drive a USB-connected Scoppy Pico (here: an **FHDM FScope-500K** board) directly,
+without the Android app — and **share one live connection between a human and an
+AI agent**. The protocol was reverse-engineered from the open-source firmware
+plus live analysis, and validated on real **v18** hardware.
+
+## Architecture
+
+Only one host can own the serial port, so a **daemon** holds a single persistent,
+synced connection and shares the live stream + control over a local Unix socket.
+The web GUI, the CLI, and the agent all connect to it at once; any client's
+setting change is applied to the Pico and broadcast to everyone (tagged with who
+changed it), so the human and the agent stay in sync.
+
+```
+   Pico/FScope ──USB──► scoppyd (daemon) ──unix socket──► { Web GUI, CLI, agent }
+```
+
+## Use it
+
+One-click: run [`run.py`](run.py) — in VSCode just press the **Run ▷** button (or
+pick a config from the Run panel, see [.vscode/launch.json](.vscode/launch.json)).
+It starts the daemon **and** serves the GUI in one process; stopping it (Ctrl-C or
+the stop button) shuts both down.
+
+```bash
+python3 run.py                       # daemon + GUI  → http://127.0.0.1:8077
+python3 run.py --no-gui              # only the daemon
+python3 run.py --gui-only            # only the GUI (a daemon must already run)
+```
+
+Or run the two halves separately (e.g. on different machines / terminals):
+
+```bash
+./run-daemon.sh                      # terminal 1: the shared daemon (owns the port)
+./run-gui.sh                         # terminal 2: serve the GUI → http://127.0.0.1:8077
+
+# the CLI / agent share the same daemon:
+python3 -m pyscoppy state             # current shared settings
+python3 -m pyscoppy stream            # live per-channel stats
+python3 -m pyscoppy grab --plot       # sniff a chunk of the shared signal
+python3 -m pyscoppy set --run stop    # change a setting -> everyone sees it
+python3 -m pyscoppy set --channels 0,1 --trigger auto
+```
+
+**Requirements:** Python 3.8+ on Linux (it uses `/dev/ttyACM*` and Unix sockets).
+Everything is **stdlib-only** — no venv, no pip, no third-party packages. `info`
+(device identity) reads the serial directly, so run it only while the daemon is
+stopped.
+
+## What works
+
+Two channels (CH1/CH2, color-coded), **real calibrated voltages** via the FScope
+front-end ranges, VOLTS/DIV (switches the actual front-end gain), TIME/DIV,
+horizontal/vertical position, client-side **trigger** (NONE/AUTO/NORM, level,
+edge, pre-trigger, draggable markers, stabilized display) and **roll mode**.
+Display modes: **YT, XY, FFT** (Hann/Hamming/Blackman, dBV/linear, span zoom) and
+combined panes. **Cursors** (Δt, 1/Δt, ΔV), a **math** channel (CH1±CH2, invert),
+a configurable set of **15 measurements**, **CSV export**, probe ×1/×10/×100 +
+custom, and a **logic-analyzer** mode (8 channels). A menu offers Mode / Signal
+Generator (freq/duty) / Channels / Max Sample Rate / Display / Help.
+
+## Hardware
+
+**FHDM FScope-500K** (2-channel analog front-end, ±6V/1X, 1MΩ, AC/DC, built-in
+sig gen) on a regular Pico. It needs its own firmware
+**`scoppy-fscope-500k-pico-v18.uf2`**, NOT the generic `scoppy-pico` build — the
+generic build breaks calibration and CH2. The firmware is **not bundled** here;
+download the matching `.uf2` from the Scoppy site (<https://oscilloscope.fhdm.xyz>)
+and drop it in `firmware/`, then flash it (hold BOOTSEL, copy to the `RPI-RP2`
+drive). The board/app call the channels CH1/CH2; internally they are firmware ids
+0/1 (GP26/ADC0, GP27→front-end). See [HARDWARE.md](HARDWARE.md) and
+[PROTOCOL.md](PROTOCOL.md). A plain Pico (no analog board) also works at 0–3.3 V.
+
+## Layout
+
+```
+pyscoppy/
+  protocol.py    wire protocol: framing, auth handshake, sample decode,
+                 FScope calibration, sig gen, voltage ranges
+  serial_port.py raw serial (CLOCAL/DTR)
+  client.py      ScoppyClient: owns the serial, sync, sig gen, ranges
+  daemon.py      scoppyd: the shared persistent connection (the hub)
+  dclient.py     client library for the daemon (used by CLI + GUI)
+  webgui.py      HTTP + SSE bridge to the daemon
+  web/           the browser oscilloscope (index.html / app.css / app.js)
+  cli.py         CLI: daemon, gui, state, stream, grab, set, info
+PROTOCOL.md HARDWARE.md AGENTS.md   reference docs
+run.py                              one-click launcher (daemon + GUI)
+run-daemon.sh run-gui.sh            launchers for the two halves
+firmware/      drop the device .uf2 here (not committed)
+```
+
+## Status & license
+
+Early **alpha** — usable day to day for a real FScope/Pico, but expect rough
+edges. Issues and PRs welcome.
+
+Licensed under **GPL-3.0** — see [LICENSE](LICENSE). This is an independent
+host-side implementation of the Scoppy USB protocol, written with reference to
+the open-source Scoppy firmware (GPL-3.0, by FHDM Apps,
+<https://oscilloscope.fhdm.xyz>). Scoppy and FScope are the work of their
+respective authors; this project is not affiliated with or endorsed by them.

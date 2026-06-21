@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scoppy — shared oscilloscope</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div id="app">
+  <header id="topbar">
+    <span class="brand">Scoppy</span>
+    <span id="conn" class="badge">connecting…</span>
+    <button id="reconnect" class="readout tap" title="Reconnect to the device (after a replug)">⟳</button>
+    <button id="srate" class="readout tap" title="Sample rate — tap to change">— S/s</button>
+    <span class="spacer"></span>
+    <span id="trigstat" class="readout dim">trig: —</span>
+    <span id="lastby" class="readout dim">—</span>
+  </header>
+
+  <main id="main">
+    <section id="screen">
+      <canvas id="scope"></canvas>
+      <div id="overlay"></div>
+      <div id="measbar"></div>
+    </section>
+
+    <aside id="controls">
+      <div class="row top">
+        <button id="run" class="tgl">RUN</button>
+        <button id="single" class="tgl">SINGLE</button>
+        <button id="menubtn" class="ghost">MENU »</button>
+      </div>
+
+      <div class="tabs" id="viewtabs">
+        <span class="tab active" data-view="yt">YT</span>
+        <span class="tab" data-view="xy">XY</span>
+        <span class="tab" data-view="fft">FFT</span>
+        <span class="tab" data-view="yt_fft">YT+FFT</span>
+        <span class="tab" data-view="yt_xy">YT+XY</span>
+        <span class="tab" data-view="yt_fft_xy">ALL</span>
+      </div>
+
+      <div class="group">
+        <div class="label">Horizontal</div>
+        <div class="readline"><span>Time/div</span><span id="tdiv-val" class="val">—</span></div>
+        <div class="row">
+          <button class="minus" data-act="time-">−</button>
+          <button class="wide" data-act="timeMenu" title="Pick a Time/Div value">TIME/DIV</button>
+          <button class="plus" data-act="time+">+</button>
+        </div>
+        <div class="readline"><span>Position</span><span id="hpos-val" class="val">—</span></div>
+        <div class="row">
+          <button class="minus" data-act="hpos-">−</button>
+          <button class="wide" data-act="hposCenter" title="Centre horizontal position">POSITION</button>
+          <button class="plus" data-act="hpos+">+</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="label">Vertical</div>
+        <div class="row seg" id="chsel">
+          <button class="seg-btn active" data-ch="0" style="--c:#7CFC4D">CH1</button>
+          <button class="seg-btn" data-ch="1" style="--c:#FFD54A">CH2</button>
+        </div>
+        <div class="row">
+          <button id="ch-on" class="tgl on">ON</button>
+          <span class="readline grow"><span>Volts/div</span><span id="vdiv-val" class="val">—</span></span>
+        </div>
+        <div class="row">
+          <button class="minus" data-act="volts-">−</button>
+          <button class="wide" data-act="voltsMenu" title="Pick a Volts/Div value">VOLTS/DIV</button>
+          <button class="plus" data-act="volts+">+</button>
+        </div>
+        <div class="readline"><span>Position</span><span id="vpos-val" class="val">—</span></div>
+        <div class="row">
+          <button class="minus" data-act="pos-">−</button>
+          <button class="wide" data-act="vposCenter" title="Centre vertical position (0 V)">POSITION</button>
+          <button class="plus" data-act="pos+">+</button>
+        </div>
+        <div class="row seg" id="autorange">
+          <button id="ar-btn" class="seg-btn">AUTO RANGE</button>
+        </div>
+        <div class="label" style="margin-top:2px">Input range (h/w sensitivity)</div>
+        <div class="row seg" id="vrange"></div>
+        <div class="row seg" id="probe">
+          <button class="seg-btn active" data-p="1">×1</button>
+          <button class="seg-btn" data-p="10">×10</button>
+          <button class="seg-btn" data-p="100">×100</button>
+          <button class="seg-btn" id="probe-custom" title="Custom probe factor">✎</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="label">Trigger</div>
+        <div class="row seg" id="trigsrc">
+          <button class="seg-btn active" data-src="0">CH1</button>
+          <button class="seg-btn" data-src="1">CH2</button>
+        </div>
+        <div class="row seg" id="trig">
+          <button data-trig="0" class="seg-btn active">NONE</button>
+          <button data-trig="1" class="seg-btn">AUTO</button>
+          <button data-trig="2" class="seg-btn">NORM</button>
+        </div>
+        <div class="row seg" id="trigedge">
+          <button data-edge="0" class="seg-btn active">RISING</button>
+          <button data-edge="1" class="seg-btn">FALLING</button>
+        </div>
+        <div class="row">
+          <button class="minus" data-act="lvl-">−</button>
+          <button class="wide" data-act="lvlMenu" title="Set trigger level (Volts)">LEVEL</button>
+          <button class="plus" data-act="lvl+">+</button>
+        </div>
+        <div class="readline"><span>Level</span><span id="lvl-val" class="val">—</span></div>
+        <div class="readline"><span>Pre-trigger</span><span id="pre-val" class="val">—</span></div>
+        <div class="row seg" id="pretrig">
+          <button data-pre="10" class="seg-btn">10%</button>
+          <button data-pre="25" class="seg-btn">25%</button>
+          <button data-pre="50" class="seg-btn active">50%</button>
+          <button data-pre="75" class="seg-btn">75%</button>
+          <button data-pre="90" class="seg-btn">90%</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="label">Tools</div>
+        <div class="row seg" id="cursors">
+          <button id="cur-btn" class="seg-btn" title="Toggle measurement cursors (drag on screen)">CURSORS</button>
+          <button id="roll-btn" class="seg-btn" title="Roll mode: free-running scroll (ignores trigger)">ROLL</button>
+        </div>
+        <div class="row seg" id="mathrow">
+          <button id="math-btn" class="seg-btn" title="Math channel (CH1±CH2)">MATH</button>
+        </div>
+        <div class="row seg" id="measrow">
+          <button id="meas-btn" class="seg-btn" title="Choose on-screen measurements">MEASUREMENTS…</button>
+        </div>
+        <div class="row seg" id="fftrow">
+          <button id="fft-btn" class="seg-btn" title="FFT window / scale / span">FFT SETTINGS…</button>
+        </div>
+        <div class="row seg" id="exportrow">
+          <button id="export-btn" class="seg-btn" title="Export samples to CSV">EXPORT CSV…</button>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- slide-in main menu -->
+  <div id="menu" class="overlay hidden">
+    <div class="menupanel">
+      <div class="row"><button id="menuclose" class="ghost">« CONTROLS</button></div>
+      <button class="menuitem" data-dlg="mode">Mode</button>
+      <button class="menuitem" data-dlg="siggen">Signal Generator</button>
+      <button class="menuitem" data-dlg="channels">Channels</button>
+      <button class="menuitem" data-dlg="maxsr">Max Sample Rate</button>
+      <button class="menuitem" data-dlg="display">Display</button>
+      <button class="menuitem" data-dlg="math">Math</button>
+      <button class="menuitem" data-dlg="help">Help</button>
+    </div>
+  </div>
+
+  <!-- dialogs -->
+  <div id="dlg" class="overlay hidden">
+    <div class="dialog" id="dlgbody"></div>
+  </div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

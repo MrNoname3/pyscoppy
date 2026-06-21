@@ -1,0 +1,33 @@
+{
+  // Run & Debug configs for the Scoppy oscilloscope.
+  // Pick one in the Run panel (Ctrl/Cmd+Shift+D) and press F5 / the ▷ button.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Scoppy: daemon + GUI",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/run.py",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Scoppy: daemon only",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/run.py",
+      "args": ["--no-gui"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Scoppy: GUI only",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/run.py",
+      "args": ["--gui-only"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}
