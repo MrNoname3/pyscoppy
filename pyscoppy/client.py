@@ -1,29 +1,35 @@
+# pyright: strict
 """High-level Scoppy client: handshake + sample capture over USB serial."""
 
+from __future__ import annotations
+
 import time
+from collections.abc import Sequence
+from typing import Any, Iterator, Optional
 
 from . import protocol as P
 from .serial_port import SerialPort
 
 
 class ScoppyClient:
-    def __init__(self, port="/dev/ttyACM0"):
+    def __init__(self, port: str = "/dev/ttyACM0") -> None:
         self.sp = SerialPort(port)
         self.reader = P.FrameReader()
         self.synced = False
-        self.last_sync = None
-        self.last_sync_payload = None
+        self.last_sync: Optional[dict[str, Any]] = None
+        self.last_sync_payload: Optional[bytes] = None
 
     # -- low level ---------------------------------------------------------
 
-    def _pump(self, timeout=0.5):
+    def _pump(self, timeout: float = 0.5) -> int:
         """Read available bytes into the frame reader."""
         data = self.sp.read(4096, timeout=timeout)
         if data:
             self.reader.feed(data)
         return len(data)
 
-    def read_frame(self, timeout=1.0, want_type=None):
+    def read_frame(self, timeout: float = 1.0,
+                   want_type: Optional[int] = None) -> Optional[P.Frame]:
         """Return the next frame (optionally of a given type), or None on timeout."""
         end = time.monotonic() + timeout
         while True:
@@ -41,7 +47,7 @@ class ScoppyClient:
 
     # -- handshake ---------------------------------------------------------
 
-    def read_device_info(self, timeout=3.0):
+    def read_device_info(self, timeout: float = 3.0) -> Optional[dict[str, Any]]:
         """Wait for a SYNC broadcast and return decoded device identity.
 
         Works without completing the handshake (the Pico broadcasts SYNC while
@@ -51,18 +57,18 @@ class ScoppyClient:
             return None
         return P.decode_sync(f.payload)
 
-    def sig_gen_now(self, func=P.PWM_SQUARE, gpio=P.SIG_GEN_DEFAULT_GPIO,
-                    freq=1000, duty=50):
+    def sig_gen_now(self, func: int = P.PWM_SQUARE, gpio: int = P.SIG_GEN_DEFAULT_GPIO,
+                    freq: int = 1000, duty: int = 50) -> None:
         """Send a SIG_GEN (type 84) message immediately (no sync needed)."""
         payload = P.build_sig_gen(func, gpio, freq, duty)
         self.sp.write(P.encode_message(P.MSG_SIG_GEN, payload, version=1), timeout=0.5)
 
-    def set_voltage_range(self, channel, range_id):
+    def set_voltage_range(self, channel: int, range_id: int) -> None:
         """Switch a channel's analog front-end voltage range (FScope etc.)."""
         payload = P.build_voltage_range_changed(channel, range_id)
         self.sp.write(P.encode_message(P.MSG_VOLTAGE_RANGE_CHANGED, payload, version=1), timeout=0.5)
 
-    def set_sample_rate(self, rate_hz):
+    def set_sample_rate(self, rate_hz: int) -> None:
         """Select a fixed sample rate (0 = Auto, derive from the timebase).
 
         Like the app's top-left sample-rate value. Sent live (type 85): the
@@ -71,30 +77,32 @@ class ScoppyClient:
         payload = P.build_selected_sample_rate(rate_hz)
         self.sp.write(P.encode_message(P.MSG_SELECTED_SAMPLE_RATE, payload, version=1), timeout=0.5)
 
-    def set_trigger(self, trig_mode, trig_channel, trig_type, trig_level):
+    def set_trigger(self, trig_mode: int, trig_channel: int, trig_type: int,
+                    trig_level: int) -> None:
         """Change trigger mode/channel/type/level live (type 83) — no re-handshake."""
         payload = P.build_trigger_changed(trig_mode, trig_channel, trig_type, trig_level)
         self.sp.write(P.encode_message(P.MSG_TRIGGER_CHANGED, payload, version=1), timeout=0.5)
 
-    def set_horz_scale(self, timebase_centi_us):
+    def set_horz_scale(self, timebase_centi_us: int) -> None:
         """Change the timebase live (type 81). Forces the firmware to recompute
         the sample rate without a re-handshake."""
         payload = P.build_horz_scale_changed(timebase_centi_us)
         self.sp.write(P.encode_message(P.MSG_HORZ_SCALE_CHANGED, payload, version=1), timeout=0.5)
 
-    def set_pre_trigger(self, percent):
+    def set_pre_trigger(self, percent: int) -> None:
         """Set the pre-trigger samples percentage (0..100). Sent live (type 87)."""
         payload = P.build_pre_trigger_samples(percent)
         self.sp.write(P.encode_message(P.MSG_PRE_TRIGGER_SAMPLES, payload, version=1), timeout=0.5)
 
-    def voltage_ranges(self):
+    def voltage_ranges(self) -> dict[str, Any]:
         """Calibration table from the last SYNC: {'ch,range': (min_v, max_v)}."""
         return (self.last_sync or {}).get("voltage_ranges", {})
 
-    def sync(self, channels=(0,), timebase_centi_us=100_000_000,
-             trig_mode=P.TRIG_NONE, run_mode=P.RUN, attempts=4,
-             trig_channel=0, trig_type=P.EDGE_RISING, trig_level=128,
-             logic_mode=False, max_sr_code=P.MAX_SR_DEFAULT, num_total_channels=None):
+    def sync(self, channels: Sequence[int] = (0,), timebase_centi_us: int = 100_000_000,
+             trig_mode: int = P.TRIG_NONE, run_mode: int = P.RUN, attempts: int = 4,
+             trig_channel: int = 0, trig_type: int = P.EDGE_RISING, trig_level: int = 128,
+             logic_mode: bool = False, max_sr_code: int = P.MAX_SR_DEFAULT,
+             num_total_channels: Optional[int] = None) -> bool:
         """Attempt the v18 SYNC handshake so the Pico starts streaming samples.
 
         Reads the current SYNC, derives the per-session challenge nonce, computes
@@ -134,8 +142,8 @@ class ScoppyClient:
 
     # -- capture -----------------------------------------------------------
 
-    def sig_gen(self, func=P.PWM_SQUARE, gpio=P.SIG_GEN_DEFAULT_GPIO,
-                freq=50, duty=50):
+    def sig_gen(self, func: int = P.PWM_SQUARE, gpio: int = P.SIG_GEN_DEFAULT_GPIO,
+                freq: int = 50, duty: int = 50) -> None:
         """Start/stop the firmware PWM signal generator (default pin GP22).
 
         Must be synced first. Send during streaming; the firmware applies it in
@@ -145,7 +153,7 @@ class ScoppyClient:
         frame = P.encode_message(P.MSG_SIG_GEN, payload, version=1)
         self.sp.write(frame, timeout=0.5)
 
-    def samples(self, timeout=2.0):
+    def samples(self, timeout: float = 2.0) -> Iterator[dict[str, Any]]:
         """Generator yielding decoded SAMPLES dicts until `timeout` of silence."""
         while True:
             f = self.read_frame(timeout=timeout, want_type=P.MSG_SAMPLES)
@@ -155,16 +163,17 @@ class ScoppyClient:
             if dec is not None:
                 yield dec
 
-    def capture(self, channel=0, min_samples=2000, timeout=5.0):
+    def capture(self, channel: int = 0, min_samples: int = 2000,
+                timeout: float = 5.0) -> tuple[list[int], int]:
         """Collect at least `min_samples` 8-bit samples for one channel.
 
         Returns (samples_list, sample_rate_hz).
         """
-        out = []
+        out: list[int] = []
         rate = 0
         end = time.monotonic() + timeout
         for dec in self.samples(timeout=1.0):
-            rate = dec["sample_rate_hz"] or rate
+            rate = int(dec["sample_rate_hz"] or rate)
             for ch in dec["channels"]:
                 if ch["id"] == channel and "samples" in ch:
                     out.extend(ch["samples"])
@@ -172,11 +181,11 @@ class ScoppyClient:
                 break
         return out, rate
 
-    def close(self):
+    def close(self) -> None:
         self.sp.close()
 
-    def __enter__(self):
+    def __enter__(self) -> ScoppyClient:
         return self
 
-    def __exit__(self, *exc):
+    def __exit__(self, *exc: object) -> None:
         self.close()
