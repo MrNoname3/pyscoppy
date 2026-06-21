@@ -171,8 +171,8 @@ def cmd_stream(args):
         if msg.get("type") == "frame":
             data = msg["channels"].get(str(args.channel))
             cal = (msg.get("cal") or {}).get(str(args.channel), [0, P.ADC_VREF])
-            if data:
-                st = _stats(data)
+            st = _stats(data) if data else None
+            if st:
                 v = lambda s: cal[0] + s / 255 * (cal[1] - cal[0])
                 print(f"  CH{args.channel + 1} rate~{msg['rate']} S/s  "
                       f"min={v(st[0]):.3f}V max={v(st[1]):.3f}V avg={v(st[2]):.3f}V")
@@ -191,9 +191,11 @@ def cmd_grab(args):
     if not m or not m["data"]:
         print("No data (is the daemon synced and streaming?).")
         return 1
-    buf, st = m["data"], _stats(m["data"])
-    print(f"Grabbed {len(buf)} samples (~{m['rate']} S/s) CH{args.channel + 1}: "
-          f"adc min={st[0]} max={st[1]} avg={st[2]:.0f}")
+    buf = m["data"]
+    st = _stats(buf)
+    if st:
+        print(f"Grabbed {len(buf)} samples (~{m['rate']} S/s) CH{args.channel + 1}: "
+              f"adc min={st[0]} max={st[1]} avg={st[2]:.0f}")
     if args.plot:
         _ascii_plot(buf, m["rate"], args.channel)
     return 0

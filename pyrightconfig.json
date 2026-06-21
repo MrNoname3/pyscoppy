@@ -1,0 +1,5 @@
+{
+  "include": ["pyscoppy", "run.py"],
+  "exclude": ["reference", "firmware", "**/__pycache__"],
+  "typeCheckingMode": "basic"
+}

@@ -2,6 +2,7 @@
 
 import json
 import socket
+from typing import Iterator, Literal, Optional, overload
 
 from .daemon import DEFAULT_SOCK
 
@@ -20,7 +21,14 @@ class DaemonClient:
     def send(self, obj):
         self.sock.sendall((json.dumps(obj) + "\n").encode())
 
-    def messages(self, timeout=None, idle_ok=False):
+    @overload
+    def messages(self, timeout: Optional[float] = ...,
+                 idle_ok: Literal[False] = ...) -> Iterator[dict]: ...
+    @overload
+    def messages(self, timeout: Optional[float] = ..., *,
+                 idle_ok: Literal[True]) -> Iterator[Optional[dict]]: ...
+
+    def messages(self, timeout=None, idle_ok=False) -> Iterator[Optional[dict]]:
         """Yield decoded messages as they arrive. Blocks; set socket timeout
         via `timeout` (seconds) to make it return periodically.
 

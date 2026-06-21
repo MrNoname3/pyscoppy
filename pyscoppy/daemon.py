@@ -176,6 +176,8 @@ class Daemon:
     def _apply_device_extras(self):
         """Re-send the live (non-handshake) params the firmware would otherwise
         forget across a resync: selected sample rate, pre-trigger %, vranges."""
+        if self.scoppy is None:
+            return
         st = self.state
         try:
             self.scoppy.set_sample_rate(int(st["sample_rate"]))
@@ -195,6 +197,8 @@ class Daemon:
         signal: widen (lower id) if it clips; narrow (higher id) only if the signal's
         actual voltage span fits the narrower range with 10% headroom. Working in volts
         (not raw counts) handles off-centre signals; the headroom gives hysteresis."""
+        if self.scoppy is None:
+            return
         if not self.state["auto_vrange"].get(str(ch)):
             return
         now = time.monotonic()
@@ -234,6 +238,8 @@ class Daemon:
 
     def _pump_device(self):
         """Read available SAMPLES from the Pico into the ring buffers."""
+        if self.scoppy is None:
+            return
         # drain the kernel buffer in a few chunks (500 kS/s is a lot of data)
         for _ in range(16):
             data = self.scoppy.sp.read(16384, timeout=0.02)
@@ -484,8 +490,9 @@ class Daemon:
         sg["duty"] = int(cmd.get("duty", sg["duty"]))
         sg["gpio"] = int(cmd.get("gpio", sg["gpio"]))
         try:
-            self.scoppy.sig_gen_now(func=sg["func"], gpio=sg["gpio"],
-                                    freq=sg["freq"], duty=sg["duty"])
+            if self.scoppy:
+                self.scoppy.sig_gen_now(func=sg["func"], gpio=sg["gpio"],
+                                        freq=sg["freq"], duty=sg["duty"])
         except Exception:
             pass
         self._broadcast_state(by)
@@ -501,7 +508,8 @@ class Daemon:
             st["timebase_centi_us"] = max(1, int(params["timebase_centi_us"]))
             self._period_pool.clear()          # periods are in samples -> rate-dependent
             try:
-                self.scoppy.set_horz_scale(st["timebase_centi_us"])
+                if self.scoppy:
+                    self.scoppy.set_horz_scale(st["timebase_centi_us"])
             except Exception:
                 pass
             self._broadcast_state(by)
@@ -521,8 +529,9 @@ class Daemon:
             if "trig_channel" in params:
                 st["trig_channel"] = int(params["trig_channel"])
             try:
-                self.scoppy.set_trigger(st["trig_mode"], st["trig_channel"],
-                                        st["trig_type"], st["trig_level"])
+                if self.scoppy:
+                    self.scoppy.set_trigger(st["trig_mode"], st["trig_channel"],
+                                            st["trig_type"], st["trig_level"])
             except Exception:
                 pass
             self._broadcast_state(by)
@@ -543,15 +552,17 @@ class Daemon:
             st["sample_rate"] = max(0, int(params["sample_rate"]))
             self._period_pool.clear()          # periods are in samples -> rate-dependent
             try:
-                self.scoppy.set_sample_rate(st["sample_rate"])
-                self.scoppy.set_horz_scale(st["timebase_centi_us"])
+                if self.scoppy:
+                    self.scoppy.set_sample_rate(st["sample_rate"])
+                    self.scoppy.set_horz_scale(st["timebase_centi_us"])
             except Exception:
                 pass
             self._broadcast_state(by)
         if "pre_trigger" in params:
             st["pre_trigger"] = max(0, min(100, int(params["pre_trigger"])))
             try:
-                self.scoppy.set_pre_trigger(st["pre_trigger"])
+                if self.scoppy:
+                    self.scoppy.set_pre_trigger(st["pre_trigger"])
             except Exception:
                 pass
             self._broadcast_state(by)
@@ -565,7 +576,8 @@ class Daemon:
             for ch, rid in params["vrange"].items():
                 ch, rid = int(ch), int(rid)
                 try:
-                    self.scoppy.set_voltage_range(ch, rid)
+                    if self.scoppy:
+                        self.scoppy.set_voltage_range(ch, rid)
                 except Exception:
                     pass
                 st["vrange"][str(ch)] = rid
