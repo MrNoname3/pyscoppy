@@ -141,19 +141,30 @@ See [HARDWARE.md](HARDWARE.md) for the analog ranges and full pin map.
   nibble (`ch_id | range<<4`) — the OPPOSITE order from the SYNC calibration
   table. Don't unify them (see `decode_samples`).
 
-## Practical gotchas (these cost real debugging time)
+## Gotchas — operating vs. developing
 
-- **CLOCAL is mandatory.** Without it, `select()` reports the tty as not writable
-  and `os.write` writes 0 bytes — silently. See `serial_port.py`.
-- **Sending many malformed `SYNC_RESPONSE`s can wedge the firmware** until it is
-  physically replugged (it goes silent — 0 bytes). When debugging the handshake,
-  send *one* candidate, watch for a type-61 frame for a couple of seconds, and ask
-  for a replug between rounds rather than flooding.
-- Only **one** USB host can hold `/dev/ttyACM0`; close your handle between runs.
-- The device is `/dev/ttyACM0` (`2e8a:000a`).
-- **If the device drops or moves to a new node** (e.g. a replug), the daemon
-  auto-reconnects — usually just wait. To force it, send a reconnect command:
+**While operating the scope (these can bite a normal session):**
+
+- **High sample rates drop samples.** Above ~150 kS/s the RP2040 can occasionally
+  drop a sample, so frequency/timing reads may jitter; for rock-steady
+  measurements pick a lower fixed `sample_rate`.
+- **If the scope goes silent**, the daemon normally auto-reconnects (e.g. after a
+  replug, or the device moving to a new node) — usually just wait. To force it:
   `python3 -c "from pyscoppy.dclient import DaemonClient as D; c=D(); c.send({'cmd':'reconnect'}); c.close()"`.
+  As a last resort, ask the human to **physically replug** the Pico (this resets
+  the per-session nonce, so the daemon re-handshakes cleanly).
+- Only **one** USB host can hold `/dev/ttyACM0` (`2e8a:000a`), so don't run `info`
+  or a second daemon mid-session.
+
+**Only while developing the protocol/driver (not normal use):**
+
+- **CLOCAL is mandatory** on the tty, or host→device writes are silently dropped
+  (0 bytes). See `serial_port.py`.
+- **Flooding the firmware with malformed `SYNC_RESPONSE`s wedges it** until a
+  physical replug (it goes silent). When hacking the handshake, send *one*
+  candidate, watch a couple of seconds for a type-61 frame, and replug between
+  rounds rather than flooding. This — not normal operation — is what ever made
+  replugs necessary.
 
 ## Repo conventions
 
