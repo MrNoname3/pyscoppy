@@ -83,8 +83,11 @@ The signal generator is its own command (func: 0 off, 1 square, 2 sine):
 `c.send({"cmd":"siggen","func":1,"gpio":22,"freq":1000,"duty":50})` (GP22 on the
 FScope; gpio 255 = firmware default).
 
-**GUI-local settings are browser-only — you CANNOT push them**, only ask the human
-to click. These are display-side (kept in the browser, not the daemon): Volts/Div
+**GUI-local settings are browser-only — you CANNOT push them** to a running
+browser (there's no daemon command for them); you can only ask the human to click,
+or change their behaviour by editing `pyscoppy/web/` (that's developing the GUI,
+not driving a live one). These are display-side (kept in the browser, not the
+daemon): Volts/Div
 display zoom, vertical/horizontal **position**, **probe** factor, **cursors**, the
 **view** (YT / XY / FFT / combined), **FFT** window/scale/span, the **math** op,
 which **measurements** show, trace width, roll mode. So to make the human's screen
