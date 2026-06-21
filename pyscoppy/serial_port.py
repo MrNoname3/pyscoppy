@@ -1,9 +1,12 @@
+# pyright: strict
 """Minimal dependency-free serial port wrapper (POSIX/Linux).
 
 Scoppy exposes a plain USB CDC ACM device (e.g. /dev/ttyACM0). Baud rate is
 irrelevant for USB CDC, so we just put the tty into raw mode and do byte I/O.
 We deliberately avoid pyserial so the core driver runs with stdlib only.
 """
+
+from __future__ import annotations
 
 import fcntl
 import glob
@@ -24,7 +27,7 @@ TIOCM_RTS = 0x004
 SCOPPY_USB_VID = "2e8a"
 
 
-def _tty_vid(name):
+def _tty_vid(name: str) -> str | None:
     """USB idVendor for a /dev/ttyACMx node, or None (walks /sys)."""
     base = "/sys/class/tty/%s/device" % name
     for _ in range(6):                       # climb to the USB device dir
@@ -39,7 +42,7 @@ def _tty_vid(name):
     return None
 
 
-def find_port(preferred="/dev/ttyACM0"):
+def find_port(preferred: str = "/dev/ttyACM0") -> str:
     """Locate the Scoppy serial node. Prefers `preferred`, else the first
     /dev/ttyACM* whose USB vendor is the Pico's, else the first ACM device.
 
@@ -55,7 +58,7 @@ def find_port(preferred="/dev/ttyACM0"):
 
 
 class SerialPort:
-    def __init__(self, path="/dev/ttyACM0"):
+    def __init__(self, path: str = "/dev/ttyACM0") -> None:
         self.path = path
         self.fd = os.open(path, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
         try:
@@ -73,13 +76,13 @@ class SerialPort:
             os.close(self.fd)
             raise
 
-    def pulse_dtr(self, low_s=0.3, settle_s=0.4):
+    def pulse_dtr(self, low_s: float = 0.3, settle_s: float = 0.4) -> None:
         """Drop then re-assert DTR/RTS. The Scoppy firmware treats this as the app
         disconnecting+reconnecting, so it re-broadcasts SYNC (which carries the voltage
         calibration). Needed when we attach to a device that's already streaming and
         would otherwise never send a fresh SYNC."""
         try:
-            cur = struct.unpack("I", fcntl.ioctl(self.fd, TIOCMGET, struct.pack("I", 0)))[0]
+            cur = int(struct.unpack("I", fcntl.ioctl(self.fd, TIOCMGET, struct.pack("I", 0)))[0])
             fcntl.ioctl(self.fd, TIOCMSET, struct.pack("I", cur & ~TIOCM_DTR & ~TIOCM_RTS))
             time.sleep(low_s)
             fcntl.ioctl(self.fd, TIOCMSET, struct.pack("I", cur | TIOCM_DTR | TIOCM_RTS))
@@ -88,21 +91,21 @@ class SerialPort:
         except Exception:
             pass
 
-    def _set_modem_bits(self, bits):
+    def _set_modem_bits(self, bits: int) -> None:
         try:
-            cur = struct.unpack("I", fcntl.ioctl(self.fd, TIOCMGET, struct.pack("I", 0)))[0]
+            cur = int(struct.unpack("I", fcntl.ioctl(self.fd, TIOCMGET, struct.pack("I", 0)))[0])
             cur |= bits
             fcntl.ioctl(self.fd, TIOCMSET, struct.pack("I", cur))
         except Exception:
             pass
 
-    def flush_input(self):
+    def flush_input(self) -> None:
         try:
             termios.tcflush(self.fd, termios.TCIFLUSH)
         except Exception:
             pass
 
-    def read(self, n, timeout=1.0):
+    def read(self, n: int, timeout: float = 1.0) -> bytes:
         """Read up to n bytes, blocking up to `timeout` seconds total.
 
         Returns whatever bytes arrived (possibly fewer than n, possibly empty).
@@ -124,7 +127,7 @@ class SerialPort:
                 buf += chunk
         return bytes(buf)
 
-    def read_exact(self, n, timeout=1.0):
+    def read_exact(self, n: int, timeout: float = 1.0) -> bytes:
         """Read exactly n bytes or raise TimeoutError."""
         buf = bytearray()
         end = _now() + timeout
@@ -143,7 +146,7 @@ class SerialPort:
                 buf += chunk
         return bytes(buf)
 
-    def write(self, data, timeout=1.0):
+    def write(self, data: bytes, timeout: float = 1.0) -> int:
         total = 0
         end = _now() + timeout
         while total < len(data):
@@ -158,20 +161,18 @@ class SerialPort:
                 continue
         return total
 
-    def close(self):
+    def close(self) -> None:
         try:
             os.close(self.fd)
         except Exception:
             pass
 
-    def __enter__(self):
+    def __enter__(self) -> SerialPort:
         return self
 
-    def __exit__(self, *exc):
+    def __exit__(self, *exc: object) -> None:
         self.close()
 
 
-def _now():
-    import time
-
+def _now() -> float:
     return time.monotonic()

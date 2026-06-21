@@ -18,6 +18,7 @@ import argparse
 import json
 import sys
 import time
+from typing import Optional, Sequence
 
 from . import protocol as P
 
@@ -233,7 +234,7 @@ def cmd_set(args):
     return 0
 
 
-def main(argv=None):
+def main(argv: Optional[Sequence[str]] = None) -> int:
     ap = argparse.ArgumentParser(prog="pyscoppy")
     ap.add_argument("--port", default="/dev/ttyACM0")
     sub = ap.add_subparsers(dest="cmd", required=True)
