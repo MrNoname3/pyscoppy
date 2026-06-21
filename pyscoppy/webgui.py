@@ -18,7 +18,7 @@ _CT = {".html": "text/html", ".js": "application/javascript", ".css": "text/css"
 
 
 class Handler(BaseHTTPRequestHandler):
-    def log_message(self, *a):
+    def log_message(self, format, *args):   # silence the default access log
         pass
 
     def _send(self, code, ctype, body):
