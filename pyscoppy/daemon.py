@@ -681,7 +681,7 @@ class Daemon:
             return
 
     def _drop(self, sock):
-        c = self.clients.pop(sock.fileno(), None)
+        self.clients.pop(sock.fileno(), None)
         try:
             sock.close()
         except OSError:
