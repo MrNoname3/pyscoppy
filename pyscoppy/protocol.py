@@ -1,3 +1,4 @@
+# pyright: strict
 """Scoppy wire protocol (reverse-engineered).
 
 Source of truth: the GPL-3.0 Scoppy firmware (fhdm-dev/scoppy-pico), plus live
@@ -8,7 +9,11 @@ byte reads 18). See PROTOCOL.md for the full spec and the v18 caveats.
 All multi-byte integers are big-endian ("network bytes").
 """
 
+from __future__ import annotations
+
 import struct
+from collections.abc import Sequence
+from typing import Any
 
 START_BYTE = 255          # 0xff  - first byte of every frame (both directions)
 END_BYTE = 86             # 0x56  - terminator, ONLY on host->Pico frames
@@ -60,7 +65,7 @@ ADC_FULL_SCALE = 255      # samples are 8-bit (adc12 >> 4)
 # Encoding host -> Pico frames
 # --------------------------------------------------------------------------
 
-def encode_message(msg_type, payload, version=1):
+def encode_message(msg_type: int, payload: bytes | bytearray, version: int = 1) -> bytes:
     """Build a complete host->Pico frame (with trailing END_BYTE).
 
     Wire layout: START, size_hi, size_lo, type, type+5, version, payload..., END
@@ -73,10 +78,11 @@ def encode_message(msg_type, payload, version=1):
     return header + body
 
 
-def build_sync_response(channels=(0,), run_mode=RUN, logic_mode=False,
-                        timebase_centi_us=100_000_000,
-                        trig_mode=TRIG_NONE, trig_channel=0,
-                        trig_type=EDGE_RISING, trig_level=128):
+def build_sync_response(channels: Sequence[int] = (0,), run_mode: int = RUN,
+                        logic_mode: bool = False,
+                        timebase_centi_us: int = 100_000_000,
+                        trig_mode: int = TRIG_NONE, trig_channel: int = 0,
+                        trig_type: int = EDGE_RISING, trig_level: int = 128) -> bytes:
     """Payload for MSG_SYNC_RESPONSE.
 
     `channels` is the set of enabled channel ids (e.g. (0,) or (0, 1)).
@@ -126,24 +132,27 @@ SYNC_RESPONSE_VERSION_V18 = 3
 SYNC_NONCE_OFFSET = 14   # 4-byte big-endian nonce inside the SYNC payload
 
 
-def sync_nonce(sync_payload):
+def sync_nonce(sync_payload: bytes) -> int:
     """Extract the per-session challenge nonce from a SYNC (type 60) payload."""
-    return struct.unpack_from(">I", sync_payload, SYNC_NONCE_OFFSET)[0]
+    return int(struct.unpack_from(">I", sync_payload, SYNC_NONCE_OFFSET)[0])
 
 
-def compute_auth_token(challenge):
+def compute_auth_token(challenge: int) -> bytes:
     """The 4-byte (big-endian int) auth token expected by v18 firmware."""
     s = "%d%s" % ((challenge + AUTH_OFFSET) & 0xFFFFFFFF, AUTH_SALT)
     md5 = hashlib.md5(s.encode()).digest()
     return md5[:4]
 
 
-def build_sync_response_v18(challenge, channels=(0,), run_mode=RUN,
-                            logic_mode=False, timebase_centi_us=100_000_000,
-                            trig_mode=TRIG_NONE, trig_channel=0,
-                            trig_type=EDGE_RISING, trig_level=128,
-                            max_sr_code=MAX_SR_DEFAULT, app_variant=None, tail=(0, 0),
-                            num_total_channels=None):
+def build_sync_response_v18(challenge: int, channels: Sequence[int] = (0,),
+                            run_mode: int = RUN, logic_mode: bool = False,
+                            timebase_centi_us: int = 100_000_000,
+                            trig_mode: int = TRIG_NONE, trig_channel: int = 0,
+                            trig_type: int = EDGE_RISING, trig_level: int = 128,
+                            max_sr_code: int = MAX_SR_DEFAULT,
+                            app_variant: int | None = None,
+                            tail: Sequence[int] = (0, 0),
+                            num_total_channels: int | None = None) -> bytes:
     """v18 SYNC_RESPONSE payload.
 
     Layout (payload, i.e. after the 6-byte frame header, before the end byte):
@@ -185,7 +194,8 @@ def build_sync_response_v18(challenge, channels=(0,), run_mode=RUN,
     return bytes(p)
 
 
-def build_trigger_changed(trig_mode, trig_channel, trig_type, trig_level):
+def build_trigger_changed(trig_mode: int, trig_channel: int, trig_type: int,
+                          trig_level: int) -> bytes:
     """MSG_TRIGGER_CHANGED payload (type 83): mode(1), channel(1), type(1),
     level(int16 BE). Sent live like the app — the firmware updates its trigger
     config and marks itself dirty, so NO re-handshake (which would freeze the
@@ -194,7 +204,7 @@ def build_trigger_changed(trig_mode, trig_channel, trig_type, trig_level):
         struct.pack(">h", max(0, min(255, int(trig_level))))
 
 
-def build_horz_scale_changed(timebase_centi_us):
+def build_horz_scale_changed(timebase_centi_us: int) -> bytes:
     """MSG_HORZ_SCALE_CHANGED payload: timebase in 1/100 µs (uint32 BE).
 
     Sent live (type 81): the firmware updates timebasePs and marks itself dirty,
@@ -203,7 +213,7 @@ def build_horz_scale_changed(timebase_centi_us):
     return struct.pack(">I", timebase_centi_us)
 
 
-def build_selected_sample_rate(rate_hz):
+def build_selected_sample_rate(rate_hz: int) -> bytes:
     """MSG_SELECTED_SAMPLE_RATE payload. 0 means auto.
 
     rate < 2000 forces continuous mode (easy continuous streaming).
@@ -211,7 +221,7 @@ def build_selected_sample_rate(rate_hz):
     return struct.pack(">I", rate_hz)
 
 
-def build_pre_trigger_samples(percent):
+def build_pre_trigger_samples(percent: int) -> bytes:
     return bytes([max(0, min(100, percent))])
 
 
@@ -222,7 +232,8 @@ PWM_SINE = 2
 SIG_GEN_DEFAULT_GPIO = 255   # 255 = firmware default pin (GP22)
 
 
-def build_sig_gen(func=PWM_SQUARE, gpio=SIG_GEN_DEFAULT_GPIO, freq=50, duty=50):
+def build_sig_gen(func: int = PWM_SQUARE, gpio: int = SIG_GEN_DEFAULT_GPIO,
+                  freq: int = 50, duty: int = 50) -> bytes:
     """MSG_SIG_GEN payload: func(1), gpio(1), freq(uint32 BE), duty(uint16 BE).
 
     gpio=255 selects the firmware default (GP22). duty is a percentage (square
@@ -238,12 +249,12 @@ def build_sig_gen(func=PWM_SQUARE, gpio=SIG_GEN_DEFAULT_GPIO, freq=50, duty=50):
 class Frame:
     __slots__ = ("msg_type", "version", "payload")
 
-    def __init__(self, msg_type, version, payload):
+    def __init__(self, msg_type: int, version: int, payload: bytes) -> None:
         self.msg_type = msg_type
         self.version = version
         self.payload = payload
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"Frame(type={self.msg_type}, ver={self.version}, len={len(self.payload)})"
 
 
@@ -261,23 +272,23 @@ class FrameReader:
 
     _MAX_FRAME = 16384
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.buf = bytearray()
 
-    def feed(self, data):
+    def feed(self, data: bytes | bytearray) -> None:
         self.buf += data
 
-    def __iter__(self):
+    def __iter__(self) -> FrameReader:
         return self
 
-    def __next__(self):
+    def __next__(self) -> Frame:
         f = self.next()
         if f is None:
             raise StopIteration
         return f
 
     @staticmethod
-    def _header_at(b, i):
+    def _header_at(b: bytearray, i: int) -> bool:
         """A valid Pico->host frame header starts at b[i]?"""
         if i + 6 > len(b) or b[i] != START_BYTE:
             return False
@@ -287,7 +298,7 @@ class FrameReader:
         size = (b[i + 1] << 8) | b[i + 2]
         return 6 <= size <= 0xFFFF
 
-    def _next_header(self, start):
+    def _next_header(self, start: int) -> int | None:
         """Index of the next valid header at/after `start`, or None."""
         b = self.buf
         i = start
@@ -299,7 +310,7 @@ class FrameReader:
                 return j
             i = j + 1
 
-    def next(self):
+    def next(self) -> Frame | None:
         b = self.buf
         # resync: drop bytes until a valid header sits at position 0
         while b:
@@ -330,29 +341,29 @@ class FrameReader:
 # Semantic decoders
 # --------------------------------------------------------------------------
 
-def decode_sync(payload):
+def decode_sync(payload: bytes) -> dict[str, Any] | None:
     """Decode a MSG_SYNC payload (device identity). Layout per firmware source;
     v18 appends extra trailing bytes which we ignore."""
     if len(payload) < 20:
         return None
-    chip_id = struct.unpack_from(">I", payload, 0)[0]
+    chip_id = int(struct.unpack_from(">I", payload, 0)[0])
     unique_id = payload[4:12]
     firmware_type = payload[12]
     firmware_version = payload[13]
-    build_number = struct.unpack_from(">i", payload, 14)[0]
+    build_number = int(struct.unpack_from(">i", payload, 14)[0])
     flags = payload[18]
     num_ranges = payload[19]
     # voltage range calibration table (FScope etc.): per range 9 bytes:
     # channel_and_range(1) | min_uV(int32 BE) | max_uV(int32 BE)
-    ranges = {}
+    ranges: dict[tuple[int, int], tuple[float, float]] = {}
     i = 20
     for _ in range(num_ranges):
         if i + 9 > len(payload):
             break
         cr = payload[i]
         ch, rid = cr >> 4, cr & 0x0F
-        min_uv = struct.unpack_from(">i", payload, i + 1)[0]
-        max_uv = struct.unpack_from(">i", payload, i + 5)[0]
+        min_uv = int(struct.unpack_from(">i", payload, i + 1)[0])
+        max_uv = int(struct.unpack_from(">i", payload, i + 5)[0])
         ranges[(ch, rid)] = (min_uv / 1e6, max_uv / 1e6)   # volts
         i += 9
     return {
@@ -368,12 +379,12 @@ def decode_sync(payload):
     }
 
 
-def build_voltage_range_changed(channel, range_id):
+def build_voltage_range_changed(channel: int, range_id: int) -> bytes:
     """MSG_VOLTAGE_RANGE_CHANGED payload: channel(1), range_id(1)."""
     return bytes([channel & 0xFF, range_id & 0xFF])
 
 
-def decode_samples(payload):
+def decode_samples(payload: bytes) -> dict[str, Any] | None:
     """Decode a MSG_SAMPLES payload into per-channel 8-bit sample lists.
 
     Header: flags(1), num_data_channels(1), [chan_id | range<<4]*n,
@@ -392,18 +403,18 @@ def decode_samples(payload):
     flags = payload[0]
     n = payload[1]
     i = 2
-    chans = []
+    chans: list[dict[str, Any]] = []
     for _ in range(n):
         cb = payload[i]
         i += 1
         chans.append({"id": cb & 0x0F, "voltage_range": (cb >> 4) & 0x0F})
-    sample_rate = struct.unpack_from(">I", payload, i)[0]
+    sample_rate = int(struct.unpack_from(">I", payload, i)[0])
     i += 4
-    trigger_idx = struct.unpack_from(">i", payload, i)[0]
+    trigger_idx = int(struct.unpack_from(">i", payload, i)[0])
     i += 4
     raw = payload[i:]
     is_logic = bool(flags & 0x10)
-    result = {
+    result: dict[str, Any] = {
         "flags": flags,
         "new_record": bool(flags & 0x01),
         "last_in_frame": bool(flags & 0x02),
@@ -424,5 +435,5 @@ def decode_samples(payload):
     return result
 
 
-def adc_to_volts(sample, vref=ADC_VREF):
+def adc_to_volts(sample: float, vref: float = ADC_VREF) -> float:
     return sample / ADC_FULL_SCALE * vref
