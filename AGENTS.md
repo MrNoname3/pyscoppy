@@ -42,6 +42,9 @@ human's GUI*, tagged as changed by `agent`:
     python3 -m pyscoppy set --run stop
     python3 -m pyscoppy set --channels 0,1 --trigger auto --sample-rate 500000
 
+`python3 -m pyscoppy --help` (and `<cmd> --help`) is the full, self-describing
+command reference — you shouldn't need to read the source to operate the scope.
+
 **Etiquette:** every change alters the human's live view, and hardware changes
 (input range, signal generator, trigger, sample rate) change what the instrument
 is physically doing — so say what you're about to change and why before you do it.
@@ -148,6 +151,9 @@ See [HARDWARE.md](HARDWARE.md) for the analog ranges and full pin map.
   for a replug between rounds rather than flooding.
 - Only **one** USB host can hold `/dev/ttyACM0`; close your handle between runs.
 - The device is `/dev/ttyACM0` (`2e8a:000a`).
+- **If the device drops or moves to a new node** (e.g. a replug), the daemon
+  auto-reconnects — usually just wait. To force it, send a reconnect command:
+  `python3 -c "from pyscoppy.dclient import DaemonClient as D; c=D(); c.send({'cmd':'reconnect'}); c.close()"`.
 
 ## Repo conventions
 
