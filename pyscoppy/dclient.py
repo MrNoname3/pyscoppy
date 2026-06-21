@@ -1,34 +1,38 @@
+# pyright: strict
 """Client for talking to scoppyd over its Unix socket (used by CLI and TUI)."""
+
+from __future__ import annotations
 
 import json
 import socket
-from typing import Iterator, Literal, Optional, overload
+from typing import Any, Iterator, Literal, Optional, overload
 
 from .daemon import DEFAULT_SOCK
 
 
 class DaemonClient:
-    def __init__(self, sock_path=DEFAULT_SOCK, role="agent"):
+    def __init__(self, sock_path: str = DEFAULT_SOCK, role: str = "agent") -> None:
         self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.sock.connect(sock_path)
         self.sock.setblocking(True)
         self._buf = b""
         self.send({"cmd": "hello", "role": role})
 
-    def fileno(self):
+    def fileno(self) -> int:
         return self.sock.fileno()
 
-    def send(self, obj):
+    def send(self, obj: Any) -> None:
         self.sock.sendall((json.dumps(obj) + "\n").encode())
 
     @overload
     def messages(self, timeout: Optional[float] = ...,
-                 idle_ok: Literal[False] = ...) -> Iterator[dict]: ...
+                 idle_ok: Literal[False] = ...) -> Iterator[dict[str, Any]]: ...
     @overload
     def messages(self, timeout: Optional[float] = ..., *,
-                 idle_ok: Literal[True]) -> Iterator[Optional[dict]]: ...
+                 idle_ok: Literal[True]) -> Iterator[Optional[dict[str, Any]]]: ...
 
-    def messages(self, timeout=None, idle_ok=False) -> Iterator[Optional[dict]]:
+    def messages(self, timeout: Optional[float] = None,
+                 idle_ok: bool = False) -> Iterator[Optional[dict[str, Any]]]:
         """Yield decoded messages as they arrive. Blocks; set socket timeout
         via `timeout` (seconds) to make it return periodically.
 
@@ -54,7 +58,8 @@ class DaemonClient:
                 return
             self._buf += data
 
-    def request(self, obj, want_type, timeout=3.0):
+    def request(self, obj: Any, want_type: str,
+                timeout: float = 3.0) -> Optional[dict[str, Any]]:
         """Send a command and return the first reply of `want_type`."""
         self.send(obj)
         for msg in self.messages(timeout=timeout):
@@ -63,32 +68,33 @@ class DaemonClient:
         return None
 
     # convenience
-    def get_state(self, timeout=0.4):
+    def get_state(self, timeout: float = 0.4) -> Optional[dict[str, Any]]:
         """Return the latest state (drains any stale buffered state messages)."""
         self.send({"cmd": "get_state"})
-        latest = None
+        latest: Optional[dict[str, Any]] = None
         for msg in self.messages(timeout=timeout):
             if msg.get("type") == "state":
                 latest = msg["state"]
         return latest
 
-    def set(self, **params):
+    def set(self, **params: Any) -> None:
         self.send({"cmd": "set", "params": params})
 
-    def grab(self, channel=0, n=2000, timeout=5.0):
+    def grab(self, channel: int = 0, n: int = 2000,
+             timeout: float = 5.0) -> Optional[dict[str, Any]]:
         return self.request({"cmd": "grab", "channel": channel, "n": n}, "grab", timeout)
 
-    def subscribe(self):
+    def subscribe(self) -> None:
         self.send({"cmd": "subscribe"})
 
-    def close(self):
+    def close(self) -> None:
         try:
             self.sock.close()
         except OSError:
             pass
 
 
-def is_daemon_running(sock_path=DEFAULT_SOCK):
+def is_daemon_running(sock_path: str = DEFAULT_SOCK) -> bool:
     try:
         s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         s.connect(sock_path)
