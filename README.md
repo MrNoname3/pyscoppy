@@ -17,6 +17,10 @@ changed it), so the human and the agent stay in sync.
    Pico/FScope ──USB──► scoppyd (daemon) ──unix socket──► { Web GUI, CLI, agent }
 ```
 
+**Pairing with an AI agent?** [AGENTS.md](AGENTS.md) explains how an agent joins
+the same live session — what it can observe (`state` / `stream` / `grab`) and how
+its setting changes show up in the human's GUI.
+
 ## Use it
 
 One-click: run [`run.py`](run.py) — in VSCode just press the **Run ▷** button (or

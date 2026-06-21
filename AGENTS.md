@@ -1,18 +1,54 @@
 # Orientation for AI agents working in this repo
 
-You are looking at a host-side driver for a **Scoppy** oscilloscope running on a
-USB-connected Raspberry Pi Pico. Read this first, then [PROTOCOL.md](PROTOCOL.md).
+This is a host-side driver for a **Scoppy** USB oscilloscope (a Raspberry Pi Pico,
+here on an FHDM FScope-500K analog board). Its whole point is **shared use**: one
+daemon owns the single serial connection and relays the live stream + control over
+a local Unix socket, so a **human (in a browser GUI) and you (an AI agent) drive
+the same scope at once** and stay in sync. Read this first; read
+[PROTOCOL.md](PROTOCOL.md) if you touch the wire protocol.
 
-## What works today (all validated on live firmware v18)
+## Working with a human, live
 
-- A **daemon** (`scoppyd`) owns the serial port and completes the authenticated
-  v18 handshake; the CLI, web GUI and agents share its live stream over a local
-  Unix socket. Start it with `./run-daemon.sh`, the GUI with `./run-gui.sh`.
-- CLI verbs (`python3 -m pyscoppy …`): `state`, `stream`, `grab`, `set`, `info`
-  (run `info` only while the daemon is stopped — it reads the serial directly).
+The usual setup: the human runs `python run.py` (daemon + web GUI) and watches the
+trace in a browser. You connect to the **same daemon** and share their view.
+
+**First, check the daemon is up** — nothing works without it:
+
+    python3 -m pyscoppy state      # prints the shared settings (or says it's not running)
+
+- If it prints state, you're in the live session — go ahead.
+- If it says it's not running, ask the human to start it (`python run.py`), or, if
+  you're headless, start it yourself in the **background** so it outlives the tool
+  call that launched it: `python3 -m pyscoppy daemon`. **Never start a second
+  daemon** — only one host can hold `/dev/ttyACM0`; a second just fights for it.
+
+**Your eyes** (the same data the human sees in the GUI):
+
+    python3 -m pyscoppy state          # current settings: channels, timebase, trigger, ranges…
+    python3 -m pyscoppy stream         # live per-channel voltage stats
+    python3 -m pyscoppy grab --plot    # grab a chunk of samples + an ASCII plot
+
+**Your hands** — a setting change is applied to the Pico *and broadcast to the
+human's GUI*, tagged as changed by `agent`:
+
+    python3 -m pyscoppy set --run stop
+    python3 -m pyscoppy set --channels 0,1 --trigger auto --sample-rate 500000
+
+**Etiquette:** every change alters the human's live view, and hardware changes
+(input range, signal generator, trigger, sample rate) change what the instrument
+is physically doing — so say what you're about to change and why before you do it.
+The human's own changes come back to you the same way (tagged `web`), so you can
+follow along in `stream`. `info` (device identity) talks to the serial directly,
+so it only works while the daemon is **stopped** — don't run it mid-session.
+
+## What works today (validated on live firmware v18)
+
 - The framing parser/encoder, `SYNC`/`SAMPLES` decoders, and the v18 auth token
   (`compute_auth_token`, `build_sync_response_v18`) in
   [`pyscoppy/protocol.py`](pyscoppy/protocol.py) all match the hardware.
+- Calibrated two-channel capture, trigger, timebase/sample-rate/range control,
+  signal generator, and a browser scope (YT/XY/FFT, cursors, math, the full
+  measurement set, CSV export, logic-analyzer mode). See [README.md](README.md).
 
 ## Key facts that took real work to find
 
@@ -36,7 +72,8 @@ USB-connected Raspberry Pi Pico. Read this first, then [PROTOCOL.md](PROTOCOL.md
 
 ## Repo conventions
 
-- Core driver is **stdlib-only** (no pyserial); keep it that way so it runs
-  anywhere. `matplotlib`/`numpy` may be optional extras for plotting only.
-- Code comments and docs in English. Update PROTOCOL.md's validation status when
-  you confirm or refute something on real hardware.
+- **stdlib-only** — no third-party packages at all (the `grab --plot` output is a
+  built-in ASCII renderer, not matplotlib). Keep it that way so it runs anywhere.
+- Code and docs in English. The package type-checks clean under Pyright / Pylance
+  "basic" (`pyrightconfig.json`) — keep it green. Update PROTOCOL.md's validation
+  status when you confirm or refute something on real hardware.
