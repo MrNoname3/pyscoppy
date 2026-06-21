@@ -14,16 +14,22 @@ the agent share one live connection:
     python3 -m pyscoppy info          # device identity (direct serial; needs the daemon stopped)
 """
 
+# pyright: strict
+from __future__ import annotations
+
 import argparse
 import json
 import sys
 import time
-from typing import Optional, Sequence
+from typing import TYPE_CHECKING, Any, Optional, Sequence
 
 from . import protocol as P
 
+if TYPE_CHECKING:
+    from .dclient import DaemonClient
 
-def cmd_info(args):
+
+def cmd_info(args: argparse.Namespace) -> int:
     # direct serial read — only when the daemon is NOT running (it owns the port)
     from .client import ScoppyClient
     from .serial_port import find_port
@@ -45,19 +51,19 @@ def cmd_info(args):
     return 0
 
 
-def cmd_daemon(args):
+def cmd_daemon(args: argparse.Namespace) -> int:
     from .daemon import run
     run(port=args.port)
     return 0
 
 
-def cmd_gui(args):
+def cmd_gui(args: argparse.Namespace) -> int:
     from .webgui import run
     run(host=args.host, port=args.gui_port)
     return 0
 
 
-def cmd_up(args):
+def cmd_up(args: argparse.Namespace) -> int:
     """One-click launcher: daemon + GUI in a single process.
 
     --no-gui   runs only the daemon; --gui-only serves only the GUI (assumes a
@@ -86,7 +92,7 @@ def cmd_up(args):
 
     daemon = Daemon(port=args.port)
 
-    def _serve_daemon():
+    def _serve_daemon() -> None:
         daemon.connect_device()
         daemon.serve()
 
@@ -112,7 +118,7 @@ def cmd_up(args):
     print(f"scoppy: daemon + web GUI up  ->  http://{args.host}:{args.gui_port}"
           f"   (Ctrl-C / stop to quit)", flush=True)
 
-    def _on_sigterm(*_):       # VSCode's stop button / `kill` -> clean shutdown
+    def _on_sigterm(*_: object) -> None:   # VSCode's stop button / `kill` -> clean shutdown
         raise KeyboardInterrupt
     signal.signal(signal.SIGTERM, _on_sigterm)
     try:
@@ -129,7 +135,7 @@ def cmd_up(args):
 
 # -- daemon client commands ------------------------------------------------
 
-def _dclient():
+def _dclient() -> Optional[DaemonClient]:
     from .dclient import DaemonClient, is_daemon_running
     if not is_daemon_running():
         print("scoppyd not running. Start it with:  python3 -m pyscoppy daemon")
@@ -137,13 +143,14 @@ def _dclient():
     return DaemonClient(role="agent")
 
 
-def _stats(samples):
+def _stats(samples: Sequence[int]) -> Optional[tuple[int, int, float]]:
     if not samples:
         return None
     return min(samples), max(samples), sum(samples) / len(samples)
 
 
-def _ascii_plot(samples, rate, channel, width=80, height=16):
+def _ascii_plot(samples: Sequence[int], rate: int, channel: int,
+                width: int = 80, height: int = 16) -> None:
     step = max(1, len(samples) // width)
     cols = [samples[i] for i in range(0, len(samples), step)][:width]
     grid = [[" "] * len(cols) for _ in range(height)]
@@ -156,7 +163,7 @@ def _ascii_plot(samples, rate, channel, width=80, height=16):
     print("lo +" + "-" * len(cols) + "+")
 
 
-def cmd_state(args):
+def cmd_state(args: argparse.Namespace) -> int:
     c = _dclient()
     if not c:
         return 1
@@ -166,7 +173,7 @@ def cmd_state(args):
     return 0
 
 
-def cmd_stream(args):
+def cmd_stream(args: argparse.Namespace) -> int:
     c = _dclient()
     if not c:
         return 1
@@ -176,10 +183,12 @@ def cmd_stream(args):
     for msg in c.messages(timeout=0.5):
         if msg.get("type") == "frame":
             data = msg["channels"].get(str(args.channel))
-            cal = (msg.get("cal") or {}).get(str(args.channel), [0, P.ADC_VREF])
+            calmap: dict[str, Any] = msg.get("cal") or {}
+            cal = calmap.get(str(args.channel), [0.0, P.ADC_VREF])
             st = _stats(data) if data else None
             if st:
-                v = lambda s: cal[0] + s / 255 * (cal[1] - cal[0])
+                def v(s: float) -> float:
+                    return cal[0] + s / 255 * (cal[1] - cal[0])
                 print(f"  CH{args.channel + 1} rate~{msg['rate']} S/s  "
                       f"min={v(st[0]):.3f}V max={v(st[1]):.3f}V avg={v(st[2]):.3f}V")
         if time.monotonic() >= end:
@@ -188,7 +197,7 @@ def cmd_stream(args):
     return 0
 
 
-def cmd_grab(args):
+def cmd_grab(args: argparse.Namespace) -> int:
     c = _dclient()
     if not c:
         return 1
@@ -207,11 +216,11 @@ def cmd_grab(args):
     return 0
 
 
-def cmd_set(args):
+def cmd_set(args: argparse.Namespace) -> int:
     c = _dclient()
     if not c:
         return 1
-    params = {}
+    params: dict[str, Any] = {}
     if args.channels is not None:
         params["channels"] = [int(x) for x in args.channels.split(",")]
     if args.timebase is not None:
@@ -223,7 +232,7 @@ def cmd_set(args):
     if args.sample_rate is not None:
         params["sample_rate"] = args.sample_rate
     c.send({"cmd": "set", "params": params})
-    latest = None
+    latest: Any = None
     for msg in c.messages(timeout=2.0):
         if msg.get("type") == "state":
             latest = msg["state"]

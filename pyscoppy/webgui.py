@@ -1,3 +1,4 @@
+# pyright: strict
 """Web GUI bridge: serves an oscilloscope UI and relays to/from scoppyd.
 
 A browser-based scope styled after the Scoppy Android app. It connects to the
@@ -7,9 +8,12 @@ and stay in sync. Stdlib only (http.server + Server-Sent Events).
 Run:  python3 -m pyscoppy gui     then open http://127.0.0.1:8077
 """
 
+from __future__ import annotations
+
 import json
 import os
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from typing import Any
 
 from .dclient import DaemonClient, is_daemon_running
 
@@ -18,10 +22,10 @@ _CT = {".html": "text/html", ".js": "application/javascript", ".css": "text/css"
 
 
 class Handler(BaseHTTPRequestHandler):
-    def log_message(self, format, *args):   # silence the default access log
+    def log_message(self, format: str, *args: Any) -> None:   # silence the access log
         pass
 
-    def _send(self, code, ctype, body):
+    def _send(self, code: int, ctype: str, body: bytes) -> None:
         self.send_response(code)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(body)))
@@ -29,7 +33,7 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def do_GET(self):
+    def do_GET(self) -> None:
         path = self.path.split("?", 1)[0]
         if path == "/":
             path = "/index.html"
@@ -44,13 +48,13 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, _CT.get(ext, "application/octet-stream"), f.read())
         self._send(404, "text/plain", b"not found")
 
-    def do_POST(self):
+    def do_POST(self) -> None:
         if self.path != "/cmd":
             return self._send(404, "text/plain", b"not found")
         length = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(length) if length else b"{}"
         try:
-            cmd = json.loads(body)
+            cmd: dict[str, Any] = json.loads(body)
         except Exception:
             return self._send(400, "text/plain", b"bad json")
         if not is_daemon_running():
@@ -67,7 +71,7 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as e:
             return self._send(500, "application/json", json.dumps({"error": str(e)}).encode())
 
-    def _state(self):
+    def _state(self) -> None:
         if not is_daemon_running():
             return self._send(503, "application/json", b'{"error":"daemon not running"}')
         c = DaemonClient(role="web")
@@ -75,7 +79,7 @@ class Handler(BaseHTTPRequestHandler):
         c.close()
         self._send(200, "application/json", json.dumps({"state": st}).encode())
 
-    def _sse(self):
+    def _sse(self) -> None:
         if not is_daemon_running():
             return self._send(503, "text/plain", b"daemon not running")
         self.send_response(200)
@@ -101,14 +105,14 @@ class Handler(BaseHTTPRequestHandler):
             client.close()
 
 
-def make_server(host="127.0.0.1", port=8077):
+def make_server(host: str = "127.0.0.1", port: int = 8077) -> ThreadingHTTPServer:
     """Build the GUI HTTP server (caller drives serve_forever / shutdown)."""
     srv = ThreadingHTTPServer((host, port), Handler)
     srv.daemon_threads = True
     return srv
 
 
-def run(host="127.0.0.1", port=8077):
+def run(host: str = "127.0.0.1", port: int = 8077) -> None:
     if not is_daemon_running():
         print("WARNING: scoppyd not running. Start it:  python3 -m pyscoppy daemon")
     try:
