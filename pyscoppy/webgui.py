@@ -111,7 +111,13 @@ def make_server(host="127.0.0.1", port=8077):
 def run(host="127.0.0.1", port=8077):
     if not is_daemon_running():
         print("WARNING: scoppyd not running. Start it:  python3 -m pyscoppy daemon")
-    srv = make_server(host, port)
+    try:
+        srv = make_server(host, port)
+    except OSError as e:
+        # port already bound — almost always the GUI is already serving here
+        print(f"Can't bind {host}:{port} ({e}). Is the GUI already up? "
+              f"Open http://{host}:{port}")
+        return
     print(f"scoppy web GUI: http://{host}:{port}  (Ctrl-C to stop)", flush=True)
     try:
         srv.serve_forever()

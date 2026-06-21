@@ -74,9 +74,14 @@ def cmd_up(args):
         return 0
 
     if is_daemon_running():
-        print("scoppyd is already running. Use --gui-only to just serve the GUI, "
-              "or stop the other instance first.")
-        return 1
+        # a daemon is already up — don't start a second one (they'd fight over the
+        # serial port). Just attach the GUI to it, so F5 / `up` still "just works".
+        if args.no_gui:
+            print("scoppyd is already running — nothing to do.")
+            return 0
+        print("scoppyd is already running — serving the GUI against it.", flush=True)
+        webgui.run(host=args.host, port=args.gui_port)
+        return 0
 
     daemon = Daemon(port=args.port)
 
