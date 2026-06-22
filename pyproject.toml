@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyscoppy"
+description = "Shared host-side driver for a Scoppy USB oscilloscope: one daemon, so a human (browser GUI) and an AI agent drive the same live scope at once."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "GPL-3.0-or-later" }
+authors = [{ name = "MrNoname3" }]
+keywords = ["oscilloscope", "scoppy", "raspberry-pi-pico", "rp2040", "usb", "logic-analyzer"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering",
+    "Topic :: System :: Hardware :: Hardware Drivers",
+]
+dynamic = ["version"]
+# No runtime dependencies — stdlib only, on purpose (see README).
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/MrNoname3/pyscoppy"
+Repository = "https://github.com/MrNoname3/pyscoppy"
+
+[project.scripts]
+# installs a `pyscoppy` command equivalent to `python3 -m pyscoppy`
+pyscoppy = "pyscoppy.cli:main"
+
+[tool.setuptools]
+packages = ["pyscoppy"]
+
+[tool.setuptools.dynamic]
+version = { attr = "pyscoppy.__version__" }
+
+[tool.setuptools.package-data]
+# ship the browser GUI assets with the package
+pyscoppy = ["web/*"]

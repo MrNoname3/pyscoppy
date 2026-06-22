@@ -8,3 +8,8 @@ firmware/*
 !firmware/.gitkeep
 reference/
 .venv/
+
+# packaging build artifacts
+*.egg-info/
+build/
+dist/
