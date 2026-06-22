@@ -1,5 +1,7 @@
 # pyscoppy — a shared oscilloscope for a Scoppy / FScope Pico
 
+[![CI](https://github.com/MrNoname3/pyscoppy/actions/workflows/ci.yml/badge.svg)](https://github.com/MrNoname3/pyscoppy/actions/workflows/ci.yml)
+
 Drive a USB-connected Scoppy Pico (here: an **FHDM FScope-500K** board) directly,
 without the Android app — and **share one live connection between a human and an
 AI agent**. The protocol was reverse-engineered from the open-source firmware
