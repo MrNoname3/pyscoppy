@@ -1,4 +1,3 @@
-# pyright: strict
 """Minimal dependency-free serial port wrapper (POSIX/Linux).
 
 Scoppy exposes a plain USB CDC ACM device (e.g. /dev/ttyACM0). Baud rate is

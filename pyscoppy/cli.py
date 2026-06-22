@@ -14,7 +14,6 @@ the agent share one live connection:
     python3 -m pyscoppy info          # device identity (direct serial; needs the daemon stopped)
 """
 
-# pyright: strict
 from __future__ import annotations
 
 import argparse

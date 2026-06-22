@@ -1,4 +1,3 @@
-# pyright: strict
 """Client for talking to scoppyd over its Unix socket (used by CLI and TUI)."""
 
 from __future__ import annotations

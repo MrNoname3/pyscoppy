@@ -8,5 +8,5 @@
     "firmware",
     "**/__pycache__"
   ],
-  "typeCheckingMode": "standard"
+  "typeCheckingMode": "strict"
 }

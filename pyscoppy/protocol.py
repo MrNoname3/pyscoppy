@@ -1,4 +1,3 @@
-# pyright: strict
 """Scoppy wire protocol (reverse-engineered).
 
 Source of truth: the GPL-3.0 Scoppy firmware (fhdm-dev/scoppy-pico), plus live

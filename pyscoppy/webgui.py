@@ -1,4 +1,3 @@
-# pyright: strict
 """Web GUI bridge: serves an oscilloscope UI and relays to/from scoppyd.
 
 A browser-based scope styled after the Scoppy Android app. It connects to the

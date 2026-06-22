@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# pyright: strict
 """One-click launcher for the Scoppy oscilloscope.
 
 Run this file (VSCode's Run ▷ button, or `python run.py`) to start the shared

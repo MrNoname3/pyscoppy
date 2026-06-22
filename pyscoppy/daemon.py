@@ -9,7 +9,6 @@ and broadcast to everyone — so the human and the agent stay in sync.
 Stdlib only (select-based). Wire protocol: newline-delimited JSON, see README.
 """
 
-# pyright: strict
 from __future__ import annotations
 
 import json

@@ -1,4 +1,3 @@
-# pyright: strict
 """High-level Scoppy client: handshake + sample capture over USB serial."""
 
 from __future__ import annotations
