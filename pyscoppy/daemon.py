@@ -9,12 +9,16 @@ and broadcast to everyone — so the human and the agent stay in sync.
 Stdlib only (select-based). Wire protocol: newline-delimited JSON, see README.
 """
 
+# pyright: strict
+from __future__ import annotations
+
 import json
 import os
 import select
 import socket
 import time
 from collections import deque
+from typing import Any, Optional, TypedDict
 
 from .client import ScoppyClient
 from . import protocol as P
@@ -25,32 +29,60 @@ DISPLAY_POINTS = 400       # points per channel in a live display frame
 FRAME_INTERVAL = 0.1       # seconds between display frames pushed to clients
 
 
+class SigGen(TypedDict):
+    func: int
+    freq: int
+    duty: int
+    gpio: int
+
+
+class State(TypedDict):
+    """The authoritative desired scope state, mirrored to every client."""
+    channels: list[int]
+    timebase_centi_us: int
+    run_mode: int
+    trig_mode: int
+    trig_channel: int
+    trig_type: int
+    trig_level: int
+    pre_trigger: int
+    sample_rate: int
+    max_sr: int
+    logic_mode: bool
+    siggen: SigGen
+    vrange: dict[str, int]        # channel id (str) -> active front-end range id
+    auto_vrange: dict[str, bool]  # channel id (str) -> auto-range on?
+    voltage_ranges: dict[str, Any]  # 'ch,range' -> [min_v, max_v] from the device
+    synced: bool
+    rate_hz: int
+
+
 class _Client:
-    def __init__(self, sock):
+    def __init__(self, sock: socket.socket) -> None:
         self.sock = sock
         self.inbuf = b""
         self.outbuf = b""
         self.subscribed = False
         self.role = "?"
 
-    def queue(self, obj):
+    def queue(self, obj: Any) -> None:
         self.outbuf += (json.dumps(obj) + "\n").encode()
 
 
 class Daemon:
-    def __init__(self, port="/dev/ttyACM0", sock_path=DEFAULT_SOCK):
+    def __init__(self, port: str = "/dev/ttyACM0", sock_path: str = DEFAULT_SOCK) -> None:
         self.port = port
         self.sock_path = sock_path
-        self.scoppy = None
+        self.scoppy: Optional[ScoppyClient] = None
         self.connected = False                 # is a device currently open?
         self.last_reconnect = 0.0              # throttle for reconnect attempts
-        self.clients = {}                      # fileno -> _Client
-        self.rings = {}                        # channel -> deque
+        self.clients: dict[int, _Client] = {}  # fileno -> _Client
+        self.rings: dict[int, "deque[int]"] = {}   # channel -> deque
         self.rate = 0
         self.last_frame = 0.0
         self.running = True
         # authoritative desired state (applied to the Pico)
-        self.state = {
+        self.state: State = {
             "channels": [0],
             "timebase_centi_us": 100_000,      # ~500 kS/s
             "run_mode": P.RUN,
@@ -71,27 +103,27 @@ class Daemon:
             "synced": False,
             "rate_hz": 0,
         }
-        self.cal = {}                          # (ch,range) -> (min_v, max_v)
-        self.last_autorange = {0: 0.0, 1: 0.0}  # per-channel throttle
+        self.cal: dict[tuple[int, int], tuple[float, float]] = {}  # (ch,range) -> (min_v,max_v)
+        self.last_autorange: dict[int, float] = {0: 0.0, 1: 0.0}   # per-channel throttle
         # In buffered mode the device sends disjoint records (a burst sampled at the
         # full rate, then a gap) flagged new_record/last_in_frame. They are NOT
         # contiguous in time, so we must measure/display ONE record at a time rather
         # than concatenate them (concatenating spans the gaps and corrupts timing/freq).
-        self.records = {}                      # ch -> latest complete record (list)
-        self._accum = {}                       # ch -> record being assembled
+        self.records: dict[int, list[int]] = {}   # ch -> latest complete record
+        self._accum: dict[int, list[int]] = {}    # ch -> record being assembled
         self.continuous = False                # device streaming contiguously?
-        self._period_pool = {}                 # ch -> recent rise-to-rise periods
-        self.logic_ring = deque(maxlen=RING)   # logic-analyzer bytes (1 byte = 8 channels)
+        self._period_pool: dict[int, "deque[int]"] = {}  # ch -> recent rise-to-rise periods
+        self.logic_ring: "deque[int]" = deque(maxlen=RING)  # logic bytes (1 byte = 8 channels)
 
     # -- device ------------------------------------------------------------
 
-    def connect_device(self):
+    def connect_device(self) -> None:
         # tolerant: the daemon starts (and keeps serving) even with no device yet,
         # and the serve loop reconnects when one appears / after a replug
         if not self._open_device():
             print("scoppyd: no device found yet — will keep trying.", flush=True)
 
-    def _open_device(self):
+    def _open_device(self) -> bool:
         """Find + open the Pico and sync. Returns True on success."""
         from .serial_port import find_port
         port = find_port(self.port)
@@ -120,7 +152,7 @@ class Daemon:
             return False
         return True
 
-    def _handle_disconnect(self):
+    def _handle_disconnect(self) -> None:
         """Device went away (unplug/replug/error): drop it and flag a reconnect."""
         if not self.connected and self.scoppy is None:
             return
@@ -136,7 +168,7 @@ class Daemon:
         print("scoppyd: device disconnected — reconnecting…", flush=True)
         self._broadcast_state("daemon")
 
-    def _maybe_reconnect(self):
+    def _maybe_reconnect(self) -> None:
         """Throttled reconnect attempt while disconnected."""
         now = time.monotonic()
         if now - self.last_reconnect < 1.5:
@@ -147,7 +179,7 @@ class Daemon:
                   f"synced={self.state['synced']}", flush=True)
             self._broadcast_state("daemon")
 
-    def _resync(self):
+    def _resync(self) -> bool:
         if self.scoppy is None:
             self.state["synced"] = False
             return False
@@ -167,13 +199,17 @@ class Daemon:
         # pick up the FScope (or other) front-end calibration from the SYNC
         vr = self.scoppy.voltage_ranges()
         if vr:
-            self.cal = {tuple(int(x) for x in k.split(",")): tuple(v) for k, v in vr.items()}
+            newcal: dict[tuple[int, int], tuple[float, float]] = {}
+            for k, v in vr.items():
+                a, b = k.split(",")
+                newcal[(int(a), int(b))] = (float(v[0]), float(v[1]))
+            self.cal = newcal
             st["voltage_ranges"] = vr
         # a fresh handshake resets the firmware's live params; re-assert ours
         self._apply_device_extras()
         return ok
 
-    def _apply_device_extras(self):
+    def _apply_device_extras(self) -> None:
         """Re-send the live (non-handshake) params the firmware would otherwise
         forget across a resync: selected sample rate, pre-trigger %, vranges."""
         if self.scoppy is None:
@@ -187,12 +223,12 @@ class Daemon:
         except Exception:
             pass
 
-    def _ch_cal(self, ch):
+    def _ch_cal(self, ch: int) -> tuple[float, float]:
         """(min_v, max_v) for a channel's active range; default 0..3.3 if none."""
         rid = self.state["vrange"].get(str(ch), 0)
         return self.cal.get((ch, rid), (0.0, P.ADC_VREF))
 
-    def _auto_range(self, ch, data):
+    def _auto_range(self, ch: int, data: list[int]) -> None:
         """When auto-range is on, pick the front-end range that best fits the recent
         signal: widen (lower id) if it clips; narrow (higher id) only if the signal's
         actual voltage span fits the narrower range with 10% headroom. Working in volts
@@ -236,7 +272,7 @@ class Daemon:
         self.state["vrange"][str(ch)] = new
         self._broadcast_state("daemon")
 
-    def _pump_device(self):
+    def _pump_device(self) -> None:
         """Read available SAMPLES from the Pico into the ring buffers."""
         if self.scoppy is None:
             return
@@ -259,13 +295,14 @@ class Daemon:
                 if not self.state["synced"]:
                     self.state["synced"] = True
                     self._broadcast_state("daemon")
-                self.rate = dec["sample_rate_hz"] or self.rate
+                self.rate = int(dec["sample_rate_hz"] or self.rate)
                 self.state["rate_hz"] = self.rate
-                self.continuous = dec["continuous"]
+                self.continuous = bool(dec["continuous"])
                 if dec.get("logic_mode"):
                     # logic-analyzer frame: raw bytes, 1 byte = 8 digital channels
                     # (bit b = channel Db = GP(6+b)). No per-channel de-interleave.
-                    self.logic_ring.extend(dec.get("logic") or [])
+                    logic: list[int] = dec.get("logic") or []
+                    self.logic_ring.extend(logic)
                     continue
                 # only trust channel ids the calibration knows about; a stray/misframed
                 # byte must never create phantom channels or clobber a real vrange.
@@ -304,7 +341,7 @@ class Daemon:
 
     # -- display frames ----------------------------------------------------
 
-    def _measure(self, ch, data):
+    def _measure(self, ch: int, data: list[int]) -> dict[str, Any]:
         """Per-channel stats on FULL-resolution samples (not the downsampled display
         points) so Vpp/Vmax/Vmin/Freq are accurate — downsampling for display misses
         the true extremes (e.g. ~9% low Vpp). Values are raw ADC; the client converts
@@ -321,10 +358,10 @@ class Daemon:
         amp = hi - lo
         hyst = max(2.0, amp * 0.15)
         hi_th, lo_th = mid + hyst / 2, mid - hyst / 2
-        level = None
-        rises = []
-        falls = []
-        edges = []          # (index, +1 rising / -1 falling) for pulse/edge stats
+        level: Optional[int] = None
+        rises: list[int] = []
+        falls: list[int] = []
+        edges: list[tuple[int, int]] = []   # (index, +1 rising / -1 falling)
         for i, s in enumerate(data):
             if s > hi_th:
                 if level == 0:
@@ -369,7 +406,7 @@ class Daemon:
                 "pos_edges": len(rises), "neg_edges": len(falls),
                 "pos_pulses": pos_pulses, "neg_pulses": neg_pulses, "min_pulse": min_pulse}
 
-    def _win_samples(self):
+    def _win_samples(self) -> int:
         """How many ring samples make up the on-screen window — derived from Time/Div so
         the TIME/DIV control actually zooms. screen_time = timebase_centi_us×1e-7 (10 div),
         samples = screen_time × rate. Bounded so it stays drawable and within the ring."""
@@ -377,9 +414,9 @@ class Daemon:
         n = int(screen_s * self.rate) if self.rate else DISPLAY_POINTS * 8
         return max(200, min(n, RING))
 
-    def _display_frame(self):
-        out = {}
-        meas = {}
+    def _display_frame(self) -> tuple[dict[int, list[int]], float, dict[int, dict[str, Any]], int]:
+        out: dict[int, list[int]] = {}
+        meas: dict[int, dict[str, Any]] = {}
         win_s = 0.0
         screen_pts = DISPLAY_POINTS
         n_win = self._win_samples()
@@ -388,6 +425,7 @@ class Daemon:
             # continuous mode: the most recent slice of the rolling ring. Either way we send
             # a buffer wider than the on-screen window so the client can trigger-align the
             # slice within the margin without wrapping (the wrap seam used to fake a spike).
+            buf: list[int]
             if self.continuous:
                 ring = self.rings.get(ch)
                 buf = list(ring)[-min(2 * n_win, RING):] if ring else []
@@ -405,15 +443,16 @@ class Daemon:
             screen_pts = max(2, min(len(ds), round(len(ds) * n_screen / len(buf))))
         return out, win_s, meas, screen_pts
 
-    def _channel_data(self, ch):
+    def _channel_data(self, ch: int) -> list[int]:
         """Current display/measure window — used by grab too. One contiguous record in
         buffered mode, else the Time/Div window of the rolling ring."""
         if not self.continuous:
-            return list(self.records.get(ch) or [])
+            rec = self.records.get(ch)
+            return list(rec) if rec else []
         ring = self.rings.get(ch)
         return list(ring)[-self._win_samples():] if ring else []
 
-    def _logic_frame(self):
+    def _logic_frame(self) -> tuple[list[int], float]:
         """Downsampled window of logic-analyzer bytes for the display."""
         data = list(self.logic_ring)[-self._win_samples():]
         if not data:
@@ -422,11 +461,12 @@ class Daemon:
         win_s = len(data) / self.rate if self.rate else 0.0
         return data[::step][:DISPLAY_POINTS], win_s
 
-    def _push_frames(self):
+    def _push_frames(self) -> None:
         now = time.monotonic()
         if now - self.last_frame < FRAME_INTERVAL:
             return
         self.last_frame = now
+        msg: dict[str, Any]
         if self.state["logic_mode"]:
             logic, win_s = self._logic_frame()
             if not logic:
@@ -447,12 +487,12 @@ class Daemon:
 
     # -- client commands ---------------------------------------------------
 
-    def _broadcast_state(self, by):
+    def _broadcast_state(self, by: str) -> None:
         msg = {"type": "state", "state": self.state, "by": by}
         for c in self.clients.values():
             c.queue(msg)
 
-    def _handle_cmd(self, c, cmd):
+    def _handle_cmd(self, c: _Client, cmd: dict[str, Any]) -> None:
         kind = cmd.get("cmd")
         if kind == "hello":
             c.role = cmd.get("role", "?")
@@ -471,7 +511,8 @@ class Daemon:
             data = self._channel_data(ch)[-n:]
             c.queue({"type": "grab", "channel": ch, "rate": self.rate, "data": data})
         elif kind == "set":
-            self._apply_set(cmd.get("params", {}), by=c.role)
+            params: dict[str, Any] = cmd.get("params") or {}
+            self._apply_set(params, by=c.role)
         elif kind == "siggen":
             self._apply_siggen(cmd, by=c.role)
         elif kind == "reconnect":
@@ -483,7 +524,7 @@ class Daemon:
         elif kind == "ping":
             c.queue({"type": "pong"})
 
-    def _apply_siggen(self, cmd, by):
+    def _apply_siggen(self, cmd: dict[str, Any], by: str) -> None:
         sg = self.state["siggen"]
         sg["func"] = int(cmd.get("func", sg["func"]))
         sg["freq"] = int(cmd.get("freq", sg["freq"]))
@@ -497,7 +538,7 @@ class Daemon:
             pass
         self._broadcast_state(by)
 
-    def _apply_set(self, params, by):
+    def _apply_set(self, params: dict[str, Any], by: str) -> None:
         st = self.state
         changed = False
         if "channels" in params:
@@ -590,7 +631,7 @@ class Daemon:
 
     # -- socket server -----------------------------------------------------
 
-    def serve(self):
+    def serve(self) -> None:
         if os.path.exists(self.sock_path):
             os.unlink(self.sock_path)
         srv = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -626,7 +667,7 @@ class Daemon:
                 if srv in r:
                     self._accept(srv)
                 for sock in r:
-                    if sock is not srv and sock is not dev_fd:
+                    if isinstance(sock, socket.socket) and sock is not srv:
                         self._read_client(sock)
                 for sock in w:
                     self._flush_client(sock)
@@ -640,7 +681,7 @@ class Daemon:
             if self.scoppy:
                 self.scoppy.close()
 
-    def _accept(self, srv):
+    def _accept(self, srv: socket.socket) -> None:
         try:
             sock, _ = srv.accept()
         except OSError:
@@ -648,7 +689,7 @@ class Daemon:
         sock.setblocking(False)
         self.clients[sock.fileno()] = _Client(sock)
 
-    def _read_client(self, sock):
+    def _read_client(self, sock: socket.socket) -> None:
         c = self.clients.get(sock.fileno())
         if not c:
             return
@@ -670,7 +711,7 @@ class Daemon:
             except Exception as e:
                 c.queue({"type": "error", "msg": str(e)})
 
-    def _flush_client(self, sock):
+    def _flush_client(self, sock: socket.socket) -> None:
         c = self.clients.get(sock.fileno())
         if not c or not c.outbuf:
             return
@@ -680,7 +721,7 @@ class Daemon:
         except (BlockingIOError, OSError):
             return
 
-    def _drop(self, sock):
+    def _drop(self, sock: socket.socket) -> None:
         self.clients.pop(sock.fileno(), None)
         try:
             sock.close()
@@ -688,7 +729,7 @@ class Daemon:
             pass
 
 
-def run(port="/dev/ttyACM0", sock_path=DEFAULT_SOCK):
+def run(port: str = "/dev/ttyACM0", sock_path: str = DEFAULT_SOCK) -> None:
     d = Daemon(port=port, sock_path=sock_path)
     d.connect_device()
     d.serve()
