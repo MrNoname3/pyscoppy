@@ -11,6 +11,8 @@ costly to silently break (see AGENTS.md "Key facts that took real work to find")
 Run:  python3 -m unittest discover -s tests -v
 """
 
+from __future__ import annotations
+
 import struct
 import unittest
 from collections.abc import Sequence
