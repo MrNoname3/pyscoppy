@@ -1,0 +1,42 @@
+# CI — runs on both GitHub Actions and Gitea Actions from this single file.
+# Gitea Actions reads `.github/workflows/` by default and speaks GitHub's syntax,
+# so one workflow covers both (a Gitea instance just needs Actions enabled and a
+# registered runner). Keep it stdlib-only friendly: the tests need no pip deps.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.8", "3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Import smoke test
+        run: python -c "import pyscoppy; from pyscoppy import protocol, client, dclient, daemon, webgui, cli, serial_port"
+      - name: Compile + unit tests
+        # same script developers run locally (pyright is skipped here — it has its
+        # own job below); keeps one source of truth for the checks
+        run: ./run-checks.sh -v
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install pyright
+        run: pip install pyright
+      - name: Type-check (strict, per pyrightconfig.json)
+        run: pyright

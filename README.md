@@ -97,11 +97,31 @@ pyscoppy/
   webgui.py      HTTP + SSE bridge to the daemon
   web/           the browser oscilloscope (index.html / app.css / app.js)
   cli.py         CLI: daemon, gui, state, stream, grab, set, info
+tests/         hardware-free unit tests for the wire protocol (stdlib unittest)
 PROTOCOL.md HARDWARE.md AGENTS.md   reference docs
 run.py                              one-click launcher (daemon + GUI)
 run-daemon.sh run-gui.sh            launchers for the two halves
+run-checks.sh                       compile + tests + type check (CI runs this too)
 firmware/      drop the device .uf2 here (not committed)
 ```
+
+## Development
+
+No build step — it's plain stdlib Python. Before sending a change, run the same
+checks CI does:
+
+```bash
+./run-checks.sh          # byte-compile + unit tests + pyright (strict)
+./run-checks.sh -v       # verbose test output
+python3 -m unittest discover -s tests    # just the tests
+```
+
+The tests need no hardware (they exercise the pure protocol encode/decode), so
+they run anywhere. `pyright` is optional locally — the script skips it with a
+hint if it isn't installed (`pip install pyright`). CI
+([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs the tests on Python
+3.8–3.12 plus a strict type-check, and works on both GitHub Actions and Gitea
+Actions from that one file.
 
 ## Status & license
 

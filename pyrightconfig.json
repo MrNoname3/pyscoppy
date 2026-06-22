@@ -1,7 +1,8 @@
 {
   "include": [
     "pyscoppy",
-    "run.py"
+    "run.py",
+    "tests"
   ],
   "exclude": [
     "reference",

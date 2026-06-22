@@ -170,6 +170,14 @@ See [HARDWARE.md](HARDWARE.md) for the analog ranges and full pin map.
 
 - **stdlib-only** — no third-party packages at all (the `grab --plot` output is a
   built-in ASCII renderer, not matplotlib). Keep it that way so it runs anywhere.
-- Code and docs in English. The package type-checks clean under Pyright / Pylance
-  "basic" (`pyrightconfig.json`) — keep it green. Update PROTOCOL.md's validation
-  status when you confirm or refute something on real hardware.
+  (pyright is the one *dev-only* tool, used for type-checking — never imported at
+  runtime.)
+- Code and docs in English. The whole package type-checks clean under Pyright /
+  Pylance **strict** (`pyrightconfig.json` covers `pyscoppy`, `run.py` and
+  `tests`) — keep it green.
+- **Before pushing, run `./run-checks.sh`** — it byte-compiles, runs the unit
+  tests (`tests/`, hardware-free, stdlib `unittest`) and pyright, exactly the
+  gates CI enforces (`.github/workflows/ci.yml`, which calls the same script).
+  Add a regression test when you nail down a new protocol fact.
+- Update PROTOCOL.md's validation status when you confirm or refute something on
+  real hardware.
