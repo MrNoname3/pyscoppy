@@ -5,6 +5,13 @@ without the Android app — and **share one live connection between a human and 
 AI agent**. The protocol was reverse-engineered from the open-source firmware
 plus live analysis, and validated on real **v18** hardware.
 
+> ⚠️ **Very early days — alpha.** This is a young hobby project under active
+> development. It works on my setup (FScope-500K + Pico, firmware v18), but it has
+> had little testing on other hardware, firmware versions, or operating systems, so
+> expect bugs and rough edges — don't rely on it for anything critical yet.
+> **Testing reports, bug reports and PRs are very welcome** — especially from
+> different boards/firmware.
+
 ## Architecture
 
 Only one host can own the serial port, so a **daemon** holds a single persistent,
@@ -98,8 +105,10 @@ firmware/      drop the device .uf2 here (not committed)
 
 ## Status & license
 
-Early **alpha** — usable day to day for a real FScope/Pico, but expect rough
-edges. Issues and PRs welcome.
+Early **alpha**, in active development. It's usable day to day on my own
+FScope/Pico, but it still needs a lot of testing — on other boards, firmware
+versions and setups — before it can be called stable, so expect rough edges and
+breaking changes. Bug reports, testing feedback and PRs are very welcome.
 
 Licensed under **GPL-3.0** — see [LICENSE](LICENSE). This is an independent
 host-side implementation of the Scoppy USB protocol, written with reference to
