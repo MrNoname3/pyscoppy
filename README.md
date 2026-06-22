@@ -14,6 +14,8 @@ plus live analysis, and validated on real **v18** hardware.
 > **Testing reports, bug reports and PRs are very welcome** — especially from
 > different boards/firmware.
 
+![The pyscoppy browser GUI showing a 1 kHz square wave on CH1 at 500 kS/s, with the time/div, volts/div, input-range and trigger controls](docs/screenshot.png)
+
 ## Architecture
 
 Only one host can own the serial port, so a **daemon** holds a single persistent,
