@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Operating & protocol docs
+    url: https://github.com/MrNoname3/pyscoppy/blob/main/AGENTS.md
+    about: How to drive the scope, what you can set, and how to read the data.
