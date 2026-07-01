@@ -1,0 +1,35 @@
+{
+  // Portable VS Code workspace. Clone the repo anywhere and open this file
+  // ("File > Open Workspace from File…") — everything below uses relative paths,
+  // so it just works, and there are no machine-specific settings baked in.
+  "folders": [
+    {
+      "path": "."
+    }
+  ],
+  "settings": {
+    // system Python on PATH — stdlib-only, so no venv is required to run it.
+    // Point this at a venv interpreter if you prefer one.
+    "python.defaultInterpreterPath": "python3",
+    // match CI: the package type-checks clean under strict (see pyrightconfig.json)
+    "python.analysis.typeCheckingMode": "strict",
+    // run the hardware-free protocol tests from the Testing panel
+    "python.testing.unittestEnabled": true,
+    "python.testing.pytestEnabled": false,
+    "python.testing.unittestArgs": ["-s", "tests", "-p", "test_*.py"],
+    "editor.rulers": [100],
+    "files.exclude": {
+      "**/__pycache__": true,
+      "**/*.egg-info": true
+    }
+  },
+  "extensions": {
+    // offered on open so a fresh machine gets Python debugging (F5 / ▷),
+    // Pylance type-checking, and .editorconfig support
+    "recommendations": [
+      "ms-python.python",
+      "ms-python.vscode-pylance",
+      "editorconfig.editorconfig"
+    ]
+  }
+}

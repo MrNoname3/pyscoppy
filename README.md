@@ -37,7 +37,10 @@ its setting changes show up in the human's GUI.
 One-click: run [`run.py`](run.py) — in VSCode just press the **Run ▷** button (or
 pick a config from the Run panel, see [.vscode/launch.json](.vscode/launch.json)).
 It starts the daemon **and** serves the GUI in one process; stopping it (Ctrl-C or
-the stop button) shuts both down.
+the stop button) shuts both down. For a ready-to-go editor setup, open
+[`pyscoppy.code-workspace`](pyscoppy.code-workspace) (*File > Open Workspace from
+File…*) — it's fully portable (relative paths), so it works straight after a
+clone and offers the Python/Pylance extensions it needs.
 
 ```bash
 python3 run.py                       # daemon + GUI  → http://127.0.0.1:8077
