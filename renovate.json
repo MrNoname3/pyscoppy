@@ -3,5 +3,6 @@
   "extends": [
     "config:recommended"
   ],
-  "dependencyDashboard": true
+  "dependencyDashboard": true,
+  "labels": ["dependencies"]
 }
