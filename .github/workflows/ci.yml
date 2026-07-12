@@ -13,6 +13,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10   # a hung step (e.g. a stalled setup-python download) fails fast instead of idling
     strategy:
       fail-fast: false
       matrix:
@@ -31,6 +32,7 @@ jobs:
 
   typecheck:
     runs-on: ubuntu-latest
+    timeout-minutes: 10   # a hung step (e.g. a stalled setup-python download) fails fast instead of idling
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
