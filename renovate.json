@@ -1,21 +1,32 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:recommended"
+    "config:recommended",
+    "helpers:pinGitHubActionDigests"
   ],
   "dependencyDashboard": true,
-  "labels": ["dependencies"],
+  "labels": [
+    "dependencies"
+  ],
   "packageRules": [
     {
       "description": "Conservative automerge: patch/pin/digest across managers, after a 3-day soak",
-      "matchUpdateTypes": ["patch", "pin", "digest"],
+      "matchUpdateTypes": [
+        "patch",
+        "pin",
+        "digest"
+      ],
       "automerge": true,
       "minimumReleaseAge": "3 days"
     },
     {
       "description": "Also automerge GitHub Actions minor updates (same 3-day soak)",
-      "matchManagers": ["github-actions"],
-      "matchUpdateTypes": ["minor"],
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchUpdateTypes": [
+        "minor"
+      ],
       "automerge": true,
       "minimumReleaseAge": "3 days"
     }
