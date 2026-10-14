@@ -17,6 +17,9 @@ permissions:
 
 jobs:
   test:
+    # No spaces: a self-hosted runner gives the job container this name as its
+    # network alias, and Netavark before 1.15 writes it unchecked to aardvark-dns.
+    name: test-${{ matrix.python-version }}
     runs-on: ubuntu-latest
     timeout-minutes: 10   # a hung step (e.g. a stalled setup-python download) fails fast instead of idling
     strategy:
