@@ -7,8 +7,8 @@ name: CI
 
 on:
   push:
-    branches: [main]
-  pull_request:
+    branches: ['**']        # every branch, Renovate's included: main's protection requires the `check` status
+  workflow_dispatch:
 
 # Least privilege: these jobs only read the repository. Without this block the
 # GITHUB_TOKEN inherits the repository default, which may be read-write.
@@ -50,3 +50,14 @@ jobs:
         run: pip install pyright
       - name: Type-check (strict, per pyrightconfig.json)
         run: pyright
+
+  check:
+    # The one status branch protection requires. always(): a failed job above
+    # turns this red instead of skipping it.
+    if: always()
+    needs: [test, typecheck]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every test job and the type check passed
+        run: test "${{ needs.test.result }}" = success && test "${{ needs.typecheck.result }}" = success
