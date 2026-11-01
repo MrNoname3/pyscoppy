@@ -7,6 +7,10 @@ alpha.
 
 ## [Unreleased]
 
+### Removed
+- Support for Python 3.8 and 3.9, both end-of-life: `requires-python` is now
+  `>=3.10`.
+
 ## [0.1.0-alpha] - 2026-06-22
 
 First public alpha. Validated end to end on a real FHDM FScope-500K + Pico
