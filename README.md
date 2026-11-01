@@ -62,7 +62,7 @@ python3 -m pyscoppy set --run stop    # change a setting -> everyone sees it
 python3 -m pyscoppy set --channels 0,1 --trigger auto
 ```
 
-**Requirements:** Python 3.8+ on Linux (it uses `/dev/ttyACM*` and Unix sockets).
+**Requirements:** Python 3.10+ on Linux (it uses `/dev/ttyACM*` and Unix sockets).
 Everything is **stdlib-only** — no venv, no pip, no third-party packages. `info`
 (device identity) reads the serial directly, so run it only while the daemon is
 stopped.
@@ -126,9 +126,9 @@ python3 -m unittest discover -s tests    # just the tests
 The tests need no hardware (they exercise the pure protocol encode/decode), so
 they run anywhere. `pyright` is optional locally — the script skips it with a
 hint if it isn't installed (`pip install pyright`). CI
-([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs the tests on Python
-3.8–3.12 plus a strict type-check, and works on both GitHub Actions and Gitea
-Actions from that one file.
+([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs the tests on several
+Python versions, starting at the minimum above, plus a strict type-check, and
+works on both GitHub Actions and Gitea Actions from that one file.
 
 ## Status & license
 
