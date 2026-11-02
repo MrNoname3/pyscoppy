@@ -12,8 +12,8 @@ alpha.
   instead of a matrix of Python versions.
 
 ### Removed
-- Support for Python 3.8–3.11: `requires-python` is now `>=3.12`, the oldest
-  Python CI runs.
+- Support for Python 3.8–3.13: `requires-python` is now `>=3.14`, the Python
+  CI runs.
 
 ## [0.1.0-alpha] - 2026-06-22
 

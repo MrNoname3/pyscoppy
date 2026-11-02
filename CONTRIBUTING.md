@@ -7,7 +7,7 @@ details (see the issue template) are genuinely valuable.
 
 ## Getting started
 
-No build step and no dependencies — it's plain stdlib Python (3.12+) on Linux.
+No build step and no dependencies — it's plain stdlib Python (3.14+) on Linux.
 
 ```bash
 git clone https://github.com/MrNoname3/pyscoppy.git
