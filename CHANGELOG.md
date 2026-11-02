@@ -7,6 +7,10 @@ alpha.
 
 ## [Unreleased]
 
+### Changed
+- CI runs the tests and the type check on each job image's own `python3`
+  instead of a matrix of Python versions.
+
 ### Removed
 - Support for Python 3.8–3.11: `requires-python` is now `>=3.12`, the oldest
   Python CI runs.
