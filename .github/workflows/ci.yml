@@ -17,22 +17,14 @@ permissions:
 
 jobs:
   test:
-    # No spaces: a self-hosted runner gives the job container this name as its
-    # network alias, and Netavark before 1.15 writes it unchecked to aardvark-dns.
-    name: test-${{ matrix.python-version }}
+    # The job image's own python3, not setup-python: its builds for newer Ubuntu
+    # images need an x86-64-v3 (AVX2) CPU, which some self-hosted runners lack.
     runs-on: ubuntu-latest
-    timeout-minutes: 10   # a hung step (e.g. a stalled setup-python download) fails fast instead of idling
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.10", "3.12"]   # the first is pyproject.toml's requires-python floor
+    timeout-minutes: 10   # a hung step fails fast instead of idling
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
-        with:
-          python-version: ${{ matrix.python-version }}
       - name: Import smoke test
-        run: python -c "import pyscoppy; from pyscoppy import protocol, client, dclient, daemon, webgui, cli, serial_port"
+        run: python3 -c "import pyscoppy; from pyscoppy import protocol, client, dclient, daemon, webgui, cli, serial_port"
       - name: Compile + unit tests
         # same script developers run locally (pyright is skipped here — it has its
         # own job below); keeps one source of truth for the checks
@@ -40,16 +32,14 @@ jobs:
 
   typecheck:
     runs-on: ubuntu-latest
-    timeout-minutes: 10   # a hung step (e.g. a stalled setup-python download) fails fast instead of idling
+    timeout-minutes: 10   # a hung step (e.g. a stalled pip download) fails fast instead of idling
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
-        with:
-          python-version: "3.15"
       - name: Install pyright
-        run: pip install pyright
+        # a venv: the image's system Python refuses pip installs (PEP 668)
+        run: python3 -m venv .venv && .venv/bin/pip install pyright
       - name: Type-check (strict, per pyrightconfig.json)
-        run: pyright
+        run: .venv/bin/pyright
 
   check:
     # The one status branch protection requires. always(): a failed job above

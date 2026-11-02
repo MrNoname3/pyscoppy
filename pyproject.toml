@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "pyscoppy"
 description = "Shared host-side driver for a Scoppy USB oscilloscope: one daemon, so a human (browser GUI) and an AI agent drive the same live scope at once."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 license = { text = "GPL-3.0-or-later" }
 authors = [{ name = "MrNoname3" }]
 keywords = ["oscilloscope", "scoppy", "raspberry-pi-pico", "rp2040", "usb", "logic-analyzer"]
