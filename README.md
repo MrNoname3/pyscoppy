@@ -126,9 +126,9 @@ python3 -m unittest discover -s tests    # just the tests
 The tests need no hardware (they exercise the pure protocol encode/decode), so
 they run anywhere. `pyright` is optional locally — the script skips it with a
 hint if it isn't installed (`pip install pyright`). CI
-([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs the tests on several
-Python versions, starting at the minimum above, plus a strict type-check, and
-works on both GitHub Actions and Gitea Actions from that one file.
+([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs the tests and a
+strict type-check on the CI image's own `python3`, and works on both GitHub
+Actions and Gitea Actions from that one file.
 
 ## Status & license
 
