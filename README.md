@@ -62,7 +62,7 @@ python3 -m pyscoppy set --run stop    # change a setting -> everyone sees it
 python3 -m pyscoppy set --channels 0,1 --trigger auto
 ```
 
-**Requirements:** Python 3.10+ on Linux (it uses `/dev/ttyACM*` and Unix sockets).
+**Requirements:** Python 3.12+ on Linux (it uses `/dev/ttyACM*` and Unix sockets).
 Everything is **stdlib-only** — no venv, no pip, no third-party packages. `info`
 (device identity) reads the serial directly, so run it only while the daemon is
 stopped.

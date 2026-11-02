@@ -8,8 +8,8 @@ alpha.
 ## [Unreleased]
 
 ### Removed
-- Support for Python 3.8 and 3.9, both end-of-life: `requires-python` is now
-  `>=3.10`.
+- Support for Python 3.8–3.11: `requires-python` is now `>=3.12`, the oldest
+  Python CI runs.
 
 ## [0.1.0-alpha] - 2026-06-22
 
