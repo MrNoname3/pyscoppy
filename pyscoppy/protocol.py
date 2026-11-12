@@ -10,6 +10,7 @@ All multi-byte integers are big-endian ("network bytes").
 
 from __future__ import annotations
 
+import hashlib
 import struct
 from collections.abc import Sequence
 from typing import Any
@@ -123,7 +124,6 @@ def build_sync_response(channels: Sequence[int] = (0,), run_mode: int = RUN,
 # `challenge` is read from the incoming SYNC message: a per-session nonce the
 # firmware regenerates each boot (the 4-byte field at SYNC payload offset 14 —
 # what older notes called "build_number"; it changes on every replug).
-import hashlib
 
 AUTH_SALT = "Err[45]:9397"
 AUTH_OFFSET = 693
@@ -138,7 +138,7 @@ def sync_nonce(sync_payload: bytes) -> int:
 
 def compute_auth_token(challenge: int) -> bytes:
     """The 4-byte (big-endian int) auth token expected by v18 firmware."""
-    s = "%d%s" % ((challenge + AUTH_OFFSET) & 0xFFFFFFFF, AUTH_SALT)
+    s = f"{(challenge + AUTH_OFFSET) & 0xFFFFFFFF}{AUTH_SALT}"
     md5 = hashlib.md5(s.encode()).digest()
     return md5[:4]
 
@@ -246,7 +246,7 @@ def build_sig_gen(func: int = PWM_SQUARE, gpio: int = SIG_GEN_DEFAULT_GPIO,
 # --------------------------------------------------------------------------
 
 class Frame:
-    __slots__ = ("msg_type", "version", "payload")
+    __slots__ = ("msg_type", "payload", "version")
 
     def __init__(self, msg_type: int, version: int, payload: bytes) -> None:
         self.msg_type = msg_type

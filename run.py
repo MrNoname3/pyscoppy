@@ -21,4 +21,4 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pyscoppy.cli import main
 
 if __name__ == "__main__":
-    raise SystemExit(main(["up"] + sys.argv[1:]))
+    raise SystemExit(main(["up", *sys.argv[1:]]))

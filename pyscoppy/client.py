@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import contextlib
 import time
-from collections.abc import Sequence
-from typing import Any, Iterator, Optional
+from collections.abc import Iterator, Sequence
+from typing import Any
 
 from . import protocol as P
 from .serial_port import SerialPort
@@ -15,8 +16,8 @@ class ScoppyClient:
         self.sp = SerialPort(port)
         self.reader = P.FrameReader()
         self.synced = False
-        self.last_sync: Optional[dict[str, Any]] = None
-        self.last_sync_payload: Optional[bytes] = None
+        self.last_sync: dict[str, Any] | None = None
+        self.last_sync_payload: bytes | None = None
 
     # -- low level ---------------------------------------------------------
 
@@ -28,7 +29,7 @@ class ScoppyClient:
         return len(data)
 
     def read_frame(self, timeout: float = 1.0,
-                   want_type: Optional[int] = None) -> Optional[P.Frame]:
+                   want_type: int | None = None) -> P.Frame | None:
         """Return the next frame (optionally of a given type), or None on timeout."""
         end = time.monotonic() + timeout
         while True:
@@ -46,7 +47,7 @@ class ScoppyClient:
 
     # -- handshake ---------------------------------------------------------
 
-    def read_device_info(self, timeout: float = 3.0) -> Optional[dict[str, Any]]:
+    def read_device_info(self, timeout: float = 3.0) -> dict[str, Any] | None:
         """Wait for a SYNC broadcast and return decoded device identity.
 
         Works without completing the handshake (the Pico broadcasts SYNC while
@@ -101,7 +102,7 @@ class ScoppyClient:
              trig_mode: int = P.TRIG_NONE, run_mode: int = P.RUN, attempts: int = 4,
              trig_channel: int = 0, trig_type: int = P.EDGE_RISING, trig_level: int = 128,
              logic_mode: bool = False, max_sr_code: int = P.MAX_SR_DEFAULT,
-             num_total_channels: Optional[int] = None) -> bool:
+             num_total_channels: int | None = None) -> bool:
         """Attempt the v18 SYNC handshake so the Pico starts streaming samples.
 
         Reads the current SYNC, derives the per-session challenge nonce, computes
@@ -129,10 +130,8 @@ class ScoppyClient:
             frame = P.encode_message(
                 P.MSG_SYNC_RESPONSE, resp, version=P.SYNC_RESPONSE_VERSION_V18)
             for _ in range(attempts):
-                try:
+                with contextlib.suppress(TimeoutError):
                     self.sp.write(frame, timeout=0.5)
-                except TimeoutError:
-                    pass
                 f = self.read_frame(timeout=1.3)
                 if f is not None and f.msg_type == P.MSG_SAMPLES:
                     self.synced = True

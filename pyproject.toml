@@ -41,3 +41,22 @@ version = { attr = "pyscoppy.__version__" }
 [tool.setuptools.package-data]
 # ship the browser GUI assets with the package
 pyscoppy = ["web/*"]
+
+# Lint configuration: `ruff check .`, run by scripts/check.sh from the repo-local
+# .venv. An explicit rule set, not ruff's implicit default, which shifts
+# between versions; the same set as repo-template's other Python projects.
+[tool.ruff]
+line-length = 100
+extend-exclude = ["work", "reference", "firmware"]
+
+[tool.ruff.lint]
+select = [
+    "E4", "E7", "E9", "F",   # pyflakes and the pycodestyle subset ruff runs by default
+    "I",                      # import sorting
+    "B",                      # flake8-bugbear
+    "UP",                     # pyupgrade
+    "SIM",                    # flake8-simplify
+    "RUF",                    # ruff's own rules
+]
+# Typography the docstrings and comments use on purpose.
+allowed-confusables = ["×", "–"]

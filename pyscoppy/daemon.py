@@ -11,16 +11,17 @@ Stdlib only (select-based). Wire protocol: newline-delimited JSON, see README.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import select
 import socket
 import time
 from collections import deque
-from typing import Any, Optional, TypedDict
+from typing import Any, TypedDict
 
-from .client import ScoppyClient
 from . import protocol as P
+from .client import ScoppyClient
 
 DEFAULT_SOCK = "/tmp/scoppyd.sock"
 RING = 200_000             # per-channel sample history kept for grab()
@@ -72,11 +73,11 @@ class Daemon:
     def __init__(self, port: str = "/dev/ttyACM0", sock_path: str = DEFAULT_SOCK) -> None:
         self.port = port
         self.sock_path = sock_path
-        self.scoppy: Optional[ScoppyClient] = None
+        self.scoppy: ScoppyClient | None = None
         self.connected = False                 # is a device currently open?
         self.last_reconnect = 0.0              # throttle for reconnect attempts
         self.clients: dict[int, _Client] = {}  # fileno -> _Client
-        self.rings: dict[int, "deque[int]"] = {}   # channel -> deque
+        self.rings: dict[int, deque[int]] = {}   # channel -> deque
         self.rate = 0
         self.last_frame = 0.0
         self.running = True
@@ -111,8 +112,8 @@ class Daemon:
         self.records: dict[int, list[int]] = {}   # ch -> latest complete record
         self._accum: dict[int, list[int]] = {}    # ch -> record being assembled
         self.continuous = False                # device streaming contiguously?
-        self._period_pool: dict[int, "deque[int]"] = {}  # ch -> recent rise-to-rise periods
-        self.logic_ring: "deque[int]" = deque(maxlen=RING)  # logic bytes (1 byte = 8 channels)
+        self._period_pool: dict[int, deque[int]] = {}  # ch -> recent rise-to-rise periods
+        self.logic_ring: deque[int] = deque(maxlen=RING)  # logic bytes (1 byte = 8 channels)
 
     # -- device ------------------------------------------------------------
 
@@ -158,10 +159,8 @@ class Daemon:
         self.connected = False
         self.state["synced"] = False
         if self.scoppy:
-            try:
+            with contextlib.suppress(Exception):
                 self.scoppy.close()
-            except Exception:
-                pass
         self.scoppy = None
         self.last_reconnect = 0.0
         print("scoppyd: device disconnected — reconnecting…", flush=True)
@@ -357,7 +356,7 @@ class Daemon:
         amp = hi - lo
         hyst = max(2.0, amp * 0.15)
         hi_th, lo_th = mid + hyst / 2, mid - hyst / 2
-        level: Optional[int] = None
+        level: int | None = None
         rises: list[int] = []
         falls: list[int] = []
         edges: list[tuple[int, int]] = []   # (index, +1 rising / -1 falling)
@@ -722,10 +721,8 @@ class Daemon:
 
     def _drop(self, sock: socket.socket) -> None:
         self.clients.pop(sock.fileno(), None)
-        try:
+        with contextlib.suppress(OSError):
             sock.close()
-        except OSError:
-            pass
 
 
 def run(port: str = "/dev/ttyACM0", sock_path: str = DEFAULT_SOCK) -> None:

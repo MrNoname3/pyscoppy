@@ -11,6 +11,8 @@ alpha.
 - `run-checks.sh` became `scripts/check.sh`, built from the shared repository
   template: it also runs shellcheck and a secret scan, installs pyright into a
   repo-local `.venv/` itself, and CI runs it as one job.
+- The code is linted with ruff (the shared rule set: pyflakes, import order,
+  bugbear, pyupgrade, simplify, ruff's own), as part of `scripts/check.sh`.
 - CI runs the tests and the type check on each job image's own `python3`
   instead of a matrix of Python versions.
 

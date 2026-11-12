@@ -5,8 +5,8 @@ human) can drive a USB-connected Pico running Scoppy firmware without the
 Android app. See README.md and PROTOCOL.md.
 """
 
-from .client import ScoppyClient
 from . import protocol
+from .client import ScoppyClient
 
 __all__ = ["ScoppyClient", "protocol"]
 __version__ = "0.1.0"

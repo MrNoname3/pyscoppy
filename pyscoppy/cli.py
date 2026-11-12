@@ -20,7 +20,8 @@ import argparse
 import json
 import sys
 import time
-from typing import TYPE_CHECKING, Any, Optional, Sequence
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any
 
 from . import protocol as P
 
@@ -71,6 +72,7 @@ def cmd_up(args: argparse.Namespace) -> int:
     """
     import signal
     import threading
+
     from . import webgui
     from .daemon import Daemon
     from .dclient import is_daemon_running
@@ -134,7 +136,7 @@ def cmd_up(args: argparse.Namespace) -> int:
 
 # -- daemon client commands ------------------------------------------------
 
-def _dclient() -> Optional[DaemonClient]:
+def _dclient() -> DaemonClient | None:
     from .dclient import DaemonClient, is_daemon_running
     if not is_daemon_running():
         print("scoppyd not running. Start it with:  python3 -m pyscoppy daemon")
@@ -142,7 +144,7 @@ def _dclient() -> Optional[DaemonClient]:
     return DaemonClient(role="agent")
 
 
-def _stats(samples: Sequence[int]) -> Optional[tuple[int, int, float]]:
+def _stats(samples: Sequence[int]) -> tuple[int, int, float] | None:
     if not samples:
         return None
     return min(samples), max(samples), sum(samples) / len(samples)
@@ -186,8 +188,8 @@ def cmd_stream(args: argparse.Namespace) -> int:
             cal = calmap.get(str(args.channel), [0.0, P.ADC_VREF])
             st = _stats(data) if data else None
             if st:
-                def v(s: float) -> float:
-                    return cal[0] + s / 255 * (cal[1] - cal[0])
+                def v(s: float, lo: float = cal[0], hi: float = cal[1]) -> float:
+                    return lo + s / 255 * (hi - lo)
                 print(f"  CH{args.channel + 1} rate~{msg['rate']} S/s  "
                       f"min={v(st[0]):.3f}V max={v(st[1]):.3f}V avg={v(st[2]):.3f}V")
         if time.monotonic() >= end:
@@ -242,7 +244,7 @@ def cmd_set(args: argparse.Namespace) -> int:
     return 0
 
 
-def main(argv: Optional[Sequence[str]] = None) -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="pyscoppy")
     ap.add_argument("--port", default="/dev/ttyACM0")
     sub = ap.add_subparsers(dest="cmd", required=True)

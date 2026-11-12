@@ -9,6 +9,7 @@ Run:  python3 -m pyscoppy gui     then open http://127.0.0.1:8077
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -122,7 +123,5 @@ def run(host: str = "127.0.0.1", port: int = 8077) -> None:
               f"Open http://{host}:{port}")
         return
     print(f"scoppy web GUI: http://{host}:{port}  (Ctrl-C to stop)", flush=True)
-    try:
+    with contextlib.suppress(KeyboardInterrupt):
         srv.serve_forever()
-    except KeyboardInterrupt:
-        pass

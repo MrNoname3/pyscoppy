@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import socket
-from typing import Any, Iterator, Literal, Optional, overload
+from collections.abc import Iterator
+from typing import Any, Literal, overload
 
 from .daemon import DEFAULT_SOCK
 
@@ -24,14 +26,14 @@ class DaemonClient:
         self.sock.sendall((json.dumps(obj) + "\n").encode())
 
     @overload
-    def messages(self, timeout: Optional[float] = ...,
+    def messages(self, timeout: float | None = ...,
                  idle_ok: Literal[False] = ...) -> Iterator[dict[str, Any]]: ...
     @overload
-    def messages(self, timeout: Optional[float] = ..., *,
-                 idle_ok: Literal[True]) -> Iterator[Optional[dict[str, Any]]]: ...
+    def messages(self, timeout: float | None = ..., *,
+                 idle_ok: Literal[True]) -> Iterator[dict[str, Any] | None]: ...
 
-    def messages(self, timeout: Optional[float] = None,
-                 idle_ok: bool = False) -> Iterator[Optional[dict[str, Any]]]:
+    def messages(self, timeout: float | None = None,
+                 idle_ok: bool = False) -> Iterator[dict[str, Any] | None]:
         """Yield decoded messages as they arrive. Blocks; set socket timeout
         via `timeout` (seconds) to make it return periodically.
 
@@ -48,7 +50,7 @@ class DaemonClient:
                     yield json.loads(line)
             try:
                 data = self.sock.recv(65536)
-            except socket.timeout:
+            except TimeoutError:
                 if idle_ok:
                     yield None
                     continue
@@ -58,7 +60,7 @@ class DaemonClient:
             self._buf += data
 
     def request(self, obj: Any, want_type: str,
-                timeout: float = 3.0) -> Optional[dict[str, Any]]:
+                timeout: float = 3.0) -> dict[str, Any] | None:
         """Send a command and return the first reply of `want_type`."""
         self.send(obj)
         for msg in self.messages(timeout=timeout):
@@ -67,10 +69,10 @@ class DaemonClient:
         return None
 
     # convenience
-    def get_state(self, timeout: float = 0.4) -> Optional[dict[str, Any]]:
+    def get_state(self, timeout: float = 0.4) -> dict[str, Any] | None:
         """Return the latest state (drains any stale buffered state messages)."""
         self.send({"cmd": "get_state"})
-        latest: Optional[dict[str, Any]] = None
+        latest: dict[str, Any] | None = None
         for msg in self.messages(timeout=timeout):
             if msg.get("type") == "state":
                 latest = msg["state"]
@@ -80,17 +82,15 @@ class DaemonClient:
         self.send({"cmd": "set", "params": params})
 
     def grab(self, channel: int = 0, n: int = 2000,
-             timeout: float = 5.0) -> Optional[dict[str, Any]]:
+             timeout: float = 5.0) -> dict[str, Any] | None:
         return self.request({"cmd": "grab", "channel": channel, "n": n}, "grab", timeout)
 
     def subscribe(self) -> None:
         self.send({"cmd": "subscribe"})
 
     def close(self) -> None:
-        try:
+        with contextlib.suppress(OSError):
             self.sock.close()
-        except OSError:
-            pass
 
 
 def is_daemon_running(sock_path: str = DEFAULT_SOCK) -> bool:

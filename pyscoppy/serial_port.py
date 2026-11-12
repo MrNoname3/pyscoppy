@@ -7,6 +7,7 @@ We deliberately avoid pyserial so the core driver runs with stdlib only.
 
 from __future__ import annotations
 
+import contextlib
 import fcntl
 import glob
 import os
@@ -28,7 +29,7 @@ SCOPPY_USB_VID = "2e8a"
 
 def _tty_vid(name: str) -> str | None:
     """USB idVendor for a /dev/ttyACMx node, or None (walks /sys)."""
-    base = "/sys/class/tty/%s/device" % name
+    base = f"/sys/class/tty/{name}/device"
     for _ in range(6):                       # climb to the USB device dir
         vid = os.path.join(base, "idVendor")
         if os.path.exists(vid):
@@ -99,10 +100,8 @@ class SerialPort:
             pass
 
     def flush_input(self) -> None:
-        try:
+        with contextlib.suppress(Exception):
             termios.tcflush(self.fd, termios.TCIFLUSH)
-        except Exception:
-            pass
 
     def read(self, n: int, timeout: float = 1.0) -> bytes:
         """Read up to n bytes, blocking up to `timeout` seconds total.
@@ -161,10 +160,8 @@ class SerialPort:
         return total
 
     def close(self) -> None:
-        try:
+        with contextlib.suppress(Exception):
             os.close(self.fd)
-        except Exception:
-            pass
 
     def __enter__(self) -> SerialPort:
         return self
