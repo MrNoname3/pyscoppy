@@ -24,11 +24,12 @@ analyzer). If you touch the wire protocol, read [PROTOCOL.md](PROTOCOL.md).
 Run the same checks CI does:
 
 ```bash
-./run-checks.sh          # byte-compile + unit tests + pyright (strict)
+./scripts/check.sh       # byte-compile + unit tests + pyright (strict) + shellcheck
 ```
 
-`pyright` is optional locally (the script skips it with a hint if it isn't
-installed: `pip install pyright`), but CI enforces it, so keep it green.
+The script builds its tools — pyright and shellcheck, pinned in
+`requirements.txt` — into a repo-local `.venv/` on first use; nothing is
+installed system-wide, and the package itself still needs no venv to run.
 
 ## Conventions
 
@@ -47,5 +48,5 @@ installed: `pip install pyright`), but CI enforces it, so keep it green.
 
 ## Submitting changes
 
-Branch off `main`, keep commits focused, and make sure `./run-checks.sh` passes
+Branch off `main`, keep commits focused, and make sure `./scripts/check.sh` passes
 and CI is green. PRs and issues are welcome.

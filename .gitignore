@@ -1,15 +1,35 @@
+# Secrets — never commit these, encrypted or not.
+*.key
+*.keyfile
+*.pem
+id_rsa*
+id_ed25519*
+*.kdbx
+
+# Repo-local toolchain, built by scripts/ensure-venv.sh.
+.venv/
+
+# Python bytecode: it records the absolute path of its source, a home directory included.
 __pycache__/
-*.pyc
+.ruff_cache/
+*.egg-info/
+
+# Private secret-scan patterns for scripts/check.sh — never commit.
+.secret-patterns.local
+
+# Captures, and local artifacts that are not version-controlled (the vendor
+# firmware may not be redistributed).
 *.csv
 /tmp/
-
-# local artifacts, not version-controlled
 firmware/*
 !firmware/.gitkeep
 reference/
-.venv/
 
-# packaging build artifacts
-*.egg-info/
+# Packaging build artifacts.
 build/
 dist/
+
+# Working files: an agent's own temp directory is not on the host's filesystem,
+# so anything the user has to see or delete lands here instead.
+work/*
+!work/.gitkeep

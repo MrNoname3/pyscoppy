@@ -108,7 +108,7 @@ tests/         hardware-free unit tests for the wire protocol (stdlib unittest)
 PROTOCOL.md HARDWARE.md AGENTS.md   reference docs
 run.py                              one-click launcher (daemon + GUI)
 run-daemon.sh run-gui.sh            launchers for the two halves
-run-checks.sh                       compile + tests + type check (CI runs this too)
+scripts/check.sh                    compile + tests + type check (CI runs this too)
 firmware/      drop the device .uf2 here (not committed)
 ```
 
@@ -118,17 +118,16 @@ No build step — it's plain stdlib Python. Before sending a change, run the sam
 checks CI does:
 
 ```bash
-./run-checks.sh          # byte-compile + unit tests + pyright (strict)
-./run-checks.sh -v       # verbose test output
+./scripts/check.sh       # byte-compile + unit tests + pyright (strict) + shellcheck
+./scripts/check.sh -v    # verbose test output
 python3 -m unittest discover -s tests    # just the tests
 ```
 
 The tests need no hardware (they exercise the pure protocol encode/decode), so
-they run anywhere. `pyright` is optional locally — the script skips it with a
-hint if it isn't installed (`pip install pyright`). CI
-([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs the tests and a
-strict type-check on the CI image's own `python3`, and works on both GitHub
-Actions and Gitea Actions from that one file.
+they run anywhere. The script builds its tools (pyright, shellcheck) into a
+repo-local `.venv/` on first use; nothing is installed system-wide. CI
+([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs the same script on
+the CI image's own `python3`.
 
 ## Status & license
 

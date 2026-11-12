@@ -1,4 +1,4 @@
 #!/bin/sh
 # Serve the web GUI (stdlib only). Needs the daemon running. Open the printed URL.
-cd "$(dirname "$0")"
+cd "$(dirname "$0")" || exit 1
 exec python3 -m pyscoppy gui "$@"

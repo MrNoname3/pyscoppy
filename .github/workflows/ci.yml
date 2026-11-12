@@ -1,53 +1,25 @@
-# CI — runs on both GitHub Actions and Gitea Actions from this single file.
-# Gitea Actions reads `.github/workflows/` by default and speaks GitHub's syntax,
-# so one workflow covers both (a Gitea instance just needs Actions enabled and a
-# registered runner). Keep it stdlib-only friendly: the tests need no pip deps.
-
 name: CI
 
+# Runs on Gitea Actions, which also reads .github/workflows. The job is the
+# release gate developers run locally, so local green means CI green.
+# Managed by repo-template: changes here are overwritten by its next update.
 on:
   push:
-    branches: ['**']        # every branch, Renovate's included: main's protection requires the `check` status
+    branches: ['**']        # Renovate's branches too: main's protection requires this status
   workflow_dispatch:
 
-# Least privilege: these jobs only read the repository. Without this block the
-# GITHUB_TOKEN inherits the repository default, which may be read-write.
+# Least privilege: the job only reads the repository.
 permissions:
   contents: read
 
 jobs:
-  test:
-    # The job image's own python3, not setup-python: its builds for newer Ubuntu
-    # images need an x86-64-v3 (AVX2) CPU, which some self-hosted runners lack.
-    runs-on: ubuntu-latest
-    timeout-minutes: 10   # a hung step fails fast instead of idling
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Import smoke test
-        run: python3 -c "import pyscoppy; from pyscoppy import protocol, client, dclient, daemon, webgui, cli, serial_port"
-      - name: Compile + unit tests
-        # same script developers run locally (pyright is skipped here — it has its
-        # own job below); keeps one source of truth for the checks
-        run: ./run-checks.sh -v
-
-  typecheck:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10   # a hung step (e.g. a stalled pip download) fails fast instead of idling
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Install pyright
-        # a venv: the image's system Python refuses pip installs (PEP 668)
-        run: python3 -m venv .venv && .venv/bin/pip install pyright
-      - name: Type-check (strict, per pyrightconfig.json)
-        run: .venv/bin/pyright
-
   check:
-    # The one status branch protection requires. always(): a failed job above
-    # turns this red instead of skipping it.
-    if: always()
-    needs: [test, typecheck]
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10   # a hung step (a stalled download) fails instead of idling
     steps:
-      - name: Every test job and the type check passed
-        run: test "${{ needs.test.result }}" = success && test "${{ needs.typecheck.result }}" = success
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run the release gate (same script as local runs)
+        run: ./scripts/check.sh

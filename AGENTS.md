@@ -175,9 +175,11 @@ See [HARDWARE.md](HARDWARE.md) for the analog ranges and full pin map.
 - Code and docs in English. The whole package type-checks clean under Pyright /
   Pylance **strict** (`pyrightconfig.json` covers `pyscoppy`, `run.py` and
   `tests`) — keep it green.
-- **Before pushing, run `./run-checks.sh`** — it byte-compiles, runs the unit
-  tests (`tests/`, hardware-free, stdlib `unittest`) and pyright, exactly the
-  gates CI enforces (`.github/workflows/ci.yml`, which calls the same script).
+- **Before pushing, run `./scripts/check.sh`** — it byte-compiles, runs the
+  unit tests (`tests/`, hardware-free, stdlib `unittest`), pyright, shellcheck
+  and a secret scan, exactly the gate CI enforces (`.github/workflows/ci.yml`,
+  which calls the same script). Its shared steps come from repo-template
+  (`scripts/lib/gate.sh`); change those there, not here.
   Add a regression test when you nail down a new protocol fact.
 - Update PROTOCOL.md's validation status when you confirm or refute something on
   real hardware.

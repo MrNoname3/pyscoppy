@@ -8,6 +8,9 @@ alpha.
 ## [Unreleased]
 
 ### Changed
+- `run-checks.sh` became `scripts/check.sh`, built from the shared repository
+  template: it also runs shellcheck and a secret scan, installs pyright into a
+  repo-local `.venv/` itself, and CI runs it as one job.
 - CI runs the tests and the type check on each job image's own `python3`
   instead of a matrix of Python versions.
 

@@ -1,4 +1,4 @@
 #!/bin/sh
 # Start the shared scoppyd daemon (owns the serial port; stdlib only, no venv).
-cd "$(dirname "$0")"
+cd "$(dirname "$0")" || exit 1
 exec python3 -m pyscoppy daemon "$@"

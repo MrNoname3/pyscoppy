@@ -1,0 +1,5 @@
+# The toolchain, installed into the repo-local .venv by scripts/ensure-venv.sh
+# (nothing is installed system-wide). Renovate bumps these pins, and CI proves
+# the bump before it merges.
+pyright==1.1.414
+shellcheck-py==0.11.0.1

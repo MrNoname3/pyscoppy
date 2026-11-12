@@ -1,0 +1,12 @@
+_commit: v0.1.6
+_src_path: https://forge.invalid/MrNoname3/repo-template.git
+ansible: false
+ci_timeout: 10
+copyright_year: '2026'
+description: 'Shared Scoppy USB oscilloscope: one daemon, so a human (browser GUI)
+    and an AI agent drive the same live scope at once.'
+python_pin: false
+python_project: true
+repo_name: pyscoppy
+scan_identifiers: true
+visibility: public

@@ -1,0 +1,3 @@
+# Scripts source their siblings by a path relative to themselves.
+source-path=SCRIPTDIR
+external-sources=true
