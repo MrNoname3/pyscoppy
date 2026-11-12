@@ -5,8 +5,9 @@ ci_timeout: 10
 copyright_year: '2026'
 description: 'Shared Scoppy USB oscilloscope: one daemon, so a human (browser GUI)
     and an AI agent drive the same live scope at once.'
-python_pin: false
+python_pin: true
 python_project: true
+python_version: '3.14'
 repo_name: pyscoppy
 scan_identifiers: true
 visibility: public

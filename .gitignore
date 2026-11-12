@@ -8,6 +8,7 @@ id_ed25519*
 
 # Repo-local toolchain, built by scripts/ensure-venv.sh.
 .venv/
+.python/
 
 # Python bytecode: it records the absolute path of its source, a home directory included.
 __pycache__/

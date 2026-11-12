@@ -1,0 +1,4 @@
+# uv, which scripts/ensure-venv.sh installs into .python/bootstrap with the OS
+# Python where that is not the version of .python-version, to download that
+# version for .venv. Renovate bumps the pin.
+uv==0.13.7
