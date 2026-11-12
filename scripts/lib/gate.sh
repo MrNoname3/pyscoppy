@@ -90,6 +90,7 @@ secret_scan_begin() {
   scan "Google OAuth token" '\b(1//0[A-Za-z0-9_-]{20,}|ya29\.[A-Za-z0-9_-]{20,})'
   scan "JSON web token" '\beyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}'
   scan "API token" '\b(ghp_|github_pat_|glpat-|xox[abp]-)[A-Za-z0-9_-]{16,}'
+  scan "credentials in a URL" '://[^/[:space:]]+:[^/[:space:]]+@'
   # Machine identifiers. Allowed: the private and documentation ranges, well-known
   # resolvers, container networks, link-local addresses and the four-part
   # version pins of requirements files anywhere, which say nothing about a LAN.
@@ -97,6 +98,8 @@ secret_scan_begin() {
     '0\.0\.0\.0|127\.0\.[01]\.1|127\.0\.0\.0/8|192\.168\.0\.0/16|10\.0\.0\.0/8|100\.64\.0\.0/10|\b(192\.0\.2|198\.51\.100|203\.0\.113)\.[0-9]+\b|\b(1\.1\.1\.1|1\.0\.0\.1|8\.8\.8\.8|8\.8\.4\.4|9\.9\.9\.9)\b|\b172\.(1[6-9]|2[0-9]|3[01])\.[0-9]+\.[0-9]+|\b169\.254\.[0-9]+\.[0-9]+|^([^:]*/)?requirements[^:/]*:[0-9]+:[A-Za-z0-9_.-]+==[0-9.]+$'
   scan "MAC address" '\b([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}\b' 'aa:bb:cc:dd:ee:ff'
   scan "UUID" '\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b'
+  # A home directory names its user; Homebrew's is a fixed install location.
+  scan "home directory path" '(/home|/Users)/[a-z][a-z0-9_-]*/' '/home/linuxbrew/'
   if [ -f .secret-patterns.local ]; then
     local p
     while IFS= read -r p; do

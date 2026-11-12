@@ -1,4 +1,4 @@
-_commit: v0.1.6
+_commit: v0.1.7
 _src_path: https://forge.invalid/MrNoname3/repo-template.git
 ansible: false
 ci_timeout: 10
@@ -10,4 +10,5 @@ python_project: true
 python_version: '3.14'
 repo_name: pyscoppy
 scan_identifiers: true
+shared_gate: true
 visibility: public
