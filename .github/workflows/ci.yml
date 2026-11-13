@@ -1,7 +1,8 @@
 name: CI
 
-# Runs on Gitea Actions, which also reads .github/workflows. The job is the
-# release gate developers run locally, so local green means CI green.
+# Runs on Gitea Actions and GitHub Actions alike, both of which read
+# .github/workflows. The job is the release gate developers run locally, so
+# local green means CI green.
 # Managed by repo-template: changes here are overwritten by its next update.
 on:
   push:
