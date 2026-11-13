@@ -1,4 +1,4 @@
-_commit: v0.1.7
+_commit: v0.1.8
 _src_path: https://forge.invalid/MrNoname3/repo-template.git
 ansible: false
 ci_timeout: 10
