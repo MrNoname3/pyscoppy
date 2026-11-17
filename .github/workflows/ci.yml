@@ -16,7 +16,8 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 10   # a hung step (a stalled download) fails instead of idling
+    # An expression, so the file is YAML before rendering too, as Renovate reads it.
+    timeout-minutes: ${{ fromJSON('10') }}   # a hung step (a stalled download) fails instead of idling
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
